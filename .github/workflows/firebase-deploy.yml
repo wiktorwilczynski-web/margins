@@ -30,17 +30,17 @@ jobs:
 
       - name: Deploy to Firebase
         run: |
+          echo '${{ secrets.FIREBASE_SERVICE_ACCOUNT }}' > sa-key.json
+          export GOOGLE_APPLICATION_CREDENTIALS="$(pwd)/sa-key.json"
           case "${{ github.event.inputs.target }}" in
             hosting)
-              firebase deploy --only hosting --project "$FIREBASE_PROJECT"
+              firebase deploy --only hosting --project margins-reading-app
               ;;
             firestore)
-              firebase deploy --only firestore:rules --project "$FIREBASE_PROJECT"
+              firebase deploy --only firestore:rules --project margins-reading-app
               ;;
             all)
-              firebase deploy --project "$FIREBASE_PROJECT"
+              firebase deploy --project margins-reading-app
               ;;
           esac
-        env:
-          FIREBASE_TOKEN: ${{ secrets.FIREBASE_TOKEN }}
-          FIREBASE_PROJECT: margins-reading-app
+          rm -f sa-key.json
