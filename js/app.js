@@ -120,11 +120,14 @@ const App = {
       const dayIndex = this.dateToDayIndex(todayStr);
       const quote = allQuotes[dayIndex % allQuotes.length];
       const book = data.books.find(b => b.quotes.some(q => q.id === quote.id));
+      const preview = quote.text.length > 100 ? quote.text.slice(0, 100) + '...' : quote.text;
 
       html += `
-        <div class="dash-section-label">Today's quote</div>
+        <div class="dash-section-label">Today's thought</div>
         <div class="dash-quote-card">
-          <div class="dash-quote-text">${quote.text}</div>
+          <div class="dash-quote-preview">"${preview}"</div>
+          <div class="dash-quote-full hidden">"${quote.text}"</div>
+          <button class="dash-quote-expand" id="expand-today-quote">Read full quote</button>
           <div class="dash-quote-source">${book ? book.author + ', ' + book.title : ''}</div>
         </div>
       `;
@@ -223,6 +226,20 @@ const App = {
           : '<span class="dash-recall-result">Noted \u2014 this will come back sooner.</span>';
       });
     });
+
+    // Expand today's quote
+    const expandBtn = document.getElementById('expand-today-quote');
+    if (expandBtn) {
+      expandBtn.addEventListener('click', () => {
+        const card = expandBtn.closest('.dash-quote-card');
+        const full = card.querySelector('.dash-quote-full');
+        const preview = card.querySelector('.dash-quote-preview');
+        const isHidden = full.classList.contains('hidden');
+        full.classList.toggle('hidden');
+        preview.classList.toggle('hidden');
+        expandBtn.textContent = isHidden ? 'Hide' : 'Read full quote';
+      });
+    }
 
     const followup = document.getElementById('ask-followup');
     if (followup) {
@@ -425,12 +442,32 @@ const App = {
           `;
         } else {
           for (const quote of freshBook.quotes) {
-            html += `<div class="hub-quote-item">"${quote.text}"</div>`;
+            const preview = quote.text.length > 80 ? quote.text.slice(0, 80) + '...' : quote.text;
+            html += `
+              <div class="hub-quote-item collapsed" data-quote-id="${quote.id}">
+                <div class="hub-quote-preview">"${preview}"</div>
+                <div class="hub-quote-full hidden">"${quote.text}"</div>
+                <button class="hub-quote-toggle">Show full quote</button>
+              </div>
+            `;
           }
         }
       }
 
       content.innerHTML = html;
+
+      // Bind quote toggles
+      content.querySelectorAll('.hub-quote-toggle').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const item = btn.closest('.hub-quote-item');
+          const full = item.querySelector('.hub-quote-full');
+          const preview = item.querySelector('.hub-quote-preview');
+          const isHidden = full.classList.contains('hidden');
+          full.classList.toggle('hidden');
+          preview.classList.toggle('hidden');
+          btn.textContent = isHidden ? 'Hide' : 'Show full quote';
+        });
+      });
 
       // Bind events
       content.querySelectorAll('.hub-section-btn').forEach(btn => {

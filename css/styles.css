@@ -1280,16 +1280,66 @@ label {
 }
 
 .hub-quote-item {
-  padding: 16px;
+  padding: 14px;
   background: var(--bg-card);
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
   margin-bottom: 10px;
+}
+
+.hub-quote-preview {
+  font-family: var(--sans);
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--text-secondary);
+}
+
+.hub-quote-full {
+  font-family: var(--serif);
+  font-style: italic;
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--text);
+}
+
+.hub-quote-toggle {
+  font-family: var(--sans);
+  font-size: 12px;
+  color: var(--accent);
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 4px 0;
+  margin-top: 6px;
+}
+
+/* Dashboard quote expand */
+.dash-quote-preview {
+  font-family: var(--sans);
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--text-secondary);
+  margin-bottom: 8px;
+}
+
+.dash-quote-full {
   font-family: var(--serif);
   font-style: italic;
   font-size: 15px;
   line-height: 1.6;
-  color: var(--text-secondary);
+  color: var(--text);
+  margin-bottom: 8px;
+}
+
+.dash-quote-expand {
+  font-family: var(--sans);
+  font-size: 12px;
+  color: var(--accent);
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  margin-bottom: 8px;
 }
 
 .hub-complete-toggle {
