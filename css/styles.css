@@ -919,9 +919,49 @@ label {
 }
 
 .chat-context-bar {
-  padding: 12px 20px;
+  padding: 10px 20px;
   border-bottom: 1px solid var(--border);
   flex-shrink: 0;
+}
+
+.chat-bar-row {
+  display: flex;
+  gap: 8px;
+}
+
+.chat-context-select {
+  flex: 1;
+  font-size: 13px;
+}
+
+.chat-provider-select {
+  width: auto;
+  min-width: 80px;
+  font-size: 12px;
+  padding: 8px 28px 8px 10px;
+  color: var(--text-muted);
+  border-color: transparent;
+  background-color: var(--bg-card-alt);
+}
+
+.chat-usage-row {
+  display: flex;
+  gap: 8px;
+  margin-top: 6px;
+}
+
+.usage-chip {
+  font-size: 10px;
+  font-weight: 500;
+  padding: 2px 8px;
+  border-radius: 10px;
+  background: var(--bg-card-alt);
+  color: var(--text-muted);
+}
+
+.usage-chip.limit {
+  color: var(--danger);
+  background: rgba(239, 68, 68, 0.1);
 }
 
 .chat-messages-container {

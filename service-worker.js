@@ -1,4 +1,4 @@
-const CACHE_NAME = 'margins-v8';
+const CACHE_NAME = 'margins-v9';
 const ASSETS = [
   '/',
   '/index.html',

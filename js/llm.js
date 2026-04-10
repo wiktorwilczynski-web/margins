@@ -1,4 +1,4 @@
-// llm.js — Multi-provider LLM abstraction with automatic fallback
+// llm.js — Multi-provider LLM abstraction with fallback and usage tracking
 
 const LLM = {
   providers: {
@@ -80,8 +80,22 @@ const LLM = {
 
   providerOrder: ['gemini', 'groq'],
   lastProvider: null,
+  selectedProvider: null, // null = auto (gemini first, fallback to groq)
 
   async chat(messages, settings, systemPrompt) {
+    // If user manually selected a provider, use only that one
+    if (this.selectedProvider) {
+      const provider = this.providers[this.selectedProvider];
+      const key = settings[provider.keyField];
+      if (!key) throw new Error(`No API key set for ${provider.name}`);
+
+      const result = await provider.chat(messages, key, systemPrompt);
+      this.lastProvider = this.selectedProvider;
+      this.trackUsage(this.selectedProvider);
+      return result;
+    }
+
+    // Auto mode: try in order, fallback on rate limit
     for (const id of this.providerOrder) {
       const provider = this.providers[id];
       const key = settings[provider.keyField];
@@ -90,16 +104,61 @@ const LLM = {
       try {
         const result = await provider.chat(messages, key, systemPrompt);
         this.lastProvider = id;
+        this.trackUsage(id);
         return result;
       } catch (err) {
         if (err.message === 'RATE_LIMIT') {
-          console.warn(`${provider.name} rate limited, trying next provider...`);
+          console.warn(`${provider.name} rate limited, trying next...`);
+          this.trackRateLimit(id);
           continue;
         }
         throw err;
       }
     }
     throw new Error('ALL_PROVIDERS_EXHAUSTED');
+  },
+
+  // ===== Usage tracking =====
+  getUsageKey() {
+    return 'margins_llm_usage';
+  },
+
+  getUsage() {
+    try {
+      const raw = localStorage.getItem(this.getUsageKey());
+      if (!raw) return this.defaultUsage();
+      const data = JSON.parse(raw);
+      // Reset if it's a new day
+      const today = new Date().toISOString().slice(0, 10);
+      if (data.date !== today) return this.defaultUsage();
+      return data;
+    } catch {
+      return this.defaultUsage();
+    }
+  },
+
+  defaultUsage() {
+    return {
+      date: new Date().toISOString().slice(0, 10),
+      gemini: { requests: 0, rateLimited: false },
+      groq: { requests: 0, rateLimited: false }
+    };
+  },
+
+  saveUsage(usage) {
+    localStorage.setItem(this.getUsageKey(), JSON.stringify(usage));
+  },
+
+  trackUsage(providerId) {
+    const usage = this.getUsage();
+    usage[providerId].requests++;
+    this.saveUsage(usage);
+  },
+
+  trackRateLimit(providerId) {
+    const usage = this.getUsage();
+    usage[providerId].rateLimited = true;
+    this.saveUsage(usage);
   },
 
   buildSystemPrompt(book, lessons, quotes) {
