@@ -944,25 +944,6 @@ label {
   background-color: var(--bg-card-alt);
 }
 
-.chat-usage-row {
-  display: flex;
-  gap: 8px;
-  margin-top: 6px;
-}
-
-.usage-chip {
-  font-size: 10px;
-  font-weight: 500;
-  padding: 2px 8px;
-  border-radius: 10px;
-  background: var(--bg-card-alt);
-  color: var(--text-muted);
-}
-
-.usage-chip.limit {
-  color: var(--danger);
-  background: rgba(239, 68, 68, 0.1);
-}
 
 .chat-messages-container {
   flex: 1;

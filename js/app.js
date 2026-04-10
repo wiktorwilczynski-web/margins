@@ -805,14 +805,6 @@ const App = {
       providerOptions += `<option value="${id}" ${currentProvider === id ? 'selected' : ''}>${LLM.providers[id].name}</option>`;
     }
 
-    // Usage stats
-    const usage = LLM.getUsage();
-    const usageHtml = configured.map(id => {
-      const u = usage[id] || { requests: 0, rateLimited: false };
-      const status = u.rateLimited ? 'limit' : 'ok';
-      return `<span class="usage-chip ${status}">${LLM.providers[id].name}: ${u.requests}${u.rateLimited ? ' (limit)' : ''}</span>`;
-    }).join('');
-
     let messagesHtml = '';
     if (this.chatMessages.length === 0) {
       messagesHtml = '<div class="chat-empty">Ask anything about your books and lessons.</div>';
@@ -828,7 +820,6 @@ const App = {
           <select id="chat-context" class="chat-context-select">${contextOptions}</select>
           <select id="chat-provider" class="chat-provider-select">${providerOptions}</select>
         </div>
-        <div class="chat-usage-row">${usageHtml}</div>
       </div>
       <div class="chat-messages-container" id="chat-messages">${messagesHtml}</div>
       <div class="chat-clear"><a id="clear-chat">Clear chat</a></div>
@@ -897,7 +888,6 @@ const App = {
         typingEl.remove();
         this.chatMessages.push({ role: 'assistant', content: response });
         this.renderChatMessages();
-        this.updateChatUsage(freshData.settings);
       } catch (err) {
         typingEl.remove();
         if (err.message === 'ALL_PROVIDERS_EXHAUSTED') {
@@ -906,7 +896,6 @@ const App = {
           this.chatMessages.push({ role: 'assistant', content: `Error: ${err.message}` });
         }
         this.renderChatMessages();
-        this.updateChatUsage(freshData.settings);
       }
     };
 
@@ -935,17 +924,6 @@ const App = {
     div.scrollTop = div.scrollHeight;
   },
 
-  updateChatUsage(settings) {
-    const row = document.querySelector('.chat-usage-row');
-    if (!row) return;
-    const configured = LLM.getConfiguredProviders(settings);
-    const usage = LLM.getUsage();
-    row.innerHTML = configured.map(id => {
-      const u = usage[id] || { requests: 0, rateLimited: false };
-      const status = u.rateLimited ? 'limit' : 'ok';
-      return `<span class="usage-chip ${status}">${LLM.providers[id].name}: ${u.requests}${u.rateLimited ? ' (limit)' : ''}</span>`;
-    }).join('');
-  },
 
   openChatWithContext(type, id) {
     // If context is a lesson, find its parent book for the dropdown
