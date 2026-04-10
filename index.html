@@ -18,7 +18,7 @@
   <script>
     // Cache buster: force reload when new version is deployed
     (function() {
-      var v = 14;
+      var v = 15;
       var stored = localStorage.getItem('margins_app_version');
       if (stored && parseInt(stored) >= v) return;
       // New version — nuke all caches and reload
@@ -119,29 +119,29 @@
       </div>
       <div class="modal-body">
         <div class="setting-group">
-          <label for="gemini-key">Gemini API Key</label>
-          <div class="input-row">
-            <input type="password" id="gemini-key" placeholder="Paste your API key">
-            <button id="toggle-key-vis" class="icon-btn" aria-label="Toggle visibility">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
-            </button>
+          <button id="toggle-api-keys" class="btn btn-sm">API Keys</button>
+          <div id="api-keys-section" class="hidden" style="margin-top:12px">
+            <div class="setting-group">
+              <label for="gemini-key">Gemini API Key</label>
+              <div class="input-row">
+                <input type="password" id="gemini-key" placeholder="Paste your API key">
+                <button id="toggle-key-vis" class="icon-btn" aria-label="Toggle visibility">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+                </button>
+              </div>
+              <a href="https://aistudio.google.com/app/apikey" target="_blank" class="help-link">How to get a free API key</a>
+            </div>
+            <div class="setting-group">
+              <label for="groq-key">Groq API Key (fallback)</label>
+              <div class="input-row">
+                <input type="password" id="groq-key" placeholder="Paste your API key">
+                <button id="toggle-groq-vis" class="icon-btn" aria-label="Toggle visibility">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+                </button>
+              </div>
+              <a href="https://console.groq.com/keys" target="_blank" class="help-link">Get a free Groq key</a>
+            </div>
           </div>
-          <a href="https://aistudio.google.com/app/apikey" target="_blank" class="help-link">How to get a free API key</a>
-        </div>
-        <div class="setting-group">
-          <label for="groq-key">Groq API Key (fallback)</label>
-          <div class="input-row">
-            <input type="password" id="groq-key" placeholder="Paste your API key">
-            <button id="toggle-groq-vis" class="icon-btn" aria-label="Toggle visibility">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
-            </button>
-          </div>
-          <a href="https://console.groq.com/keys" target="_blank" class="help-link">Get a free Groq key</a>
-        </div>
-        <div class="setting-group">
-          <label for="reminder-time">Daily Reminder Time</label>
-          <input type="time" id="reminder-time" value="20:00">
-          <button id="enable-notifications" class="btn btn-sm">Enable Notifications</button>
         </div>
         <div class="setting-group">
           <label>Theme</label>

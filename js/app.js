@@ -950,7 +950,6 @@ const App = {
       const data = Storage.getData();
       document.getElementById('gemini-key').value = data.settings.geminiApiKey || '';
       document.getElementById('groq-key').value = data.settings.groqApiKey || '';
-      document.getElementById('reminder-time').value = data.settings.reminderTime || '20:00';
 
       // Theme buttons
       document.querySelectorAll('.theme-btn').forEach(btn => {
@@ -968,6 +967,12 @@ const App = {
       Storage.updateData(d => { d.settings.geminiApiKey = e.target.value; });
     });
 
+    // Toggle API keys section
+    document.getElementById('toggle-api-keys').addEventListener('click', () => {
+      const section = document.getElementById('api-keys-section');
+      section.classList.toggle('hidden');
+    });
+
     // Toggle key visibility
     document.getElementById('toggle-key-vis').addEventListener('click', () => {
       const input = document.getElementById('gemini-key');
@@ -982,26 +987,6 @@ const App = {
     document.getElementById('toggle-groq-vis').addEventListener('click', () => {
       const input = document.getElementById('groq-key');
       input.type = input.type === 'password' ? 'text' : 'password';
-    });
-
-    // Reminder time
-    document.getElementById('reminder-time').addEventListener('change', (e) => {
-      Storage.updateData(d => { d.settings.reminderTime = e.target.value; });
-    });
-
-    // Enable notifications
-    document.getElementById('enable-notifications').addEventListener('click', async () => {
-      if ('Notification' in window) {
-        const perm = await Notification.requestPermission();
-        if (perm === 'granted') {
-          this.showToast('Notifications enabled');
-          this.scheduleNotification();
-        } else {
-          this.showToast('Notifications blocked');
-        }
-      } else {
-        this.showToast('Notifications not supported');
-      }
     });
 
     // Theme
@@ -1079,16 +1064,6 @@ const App = {
     }
   },
 
-  scheduleNotification() {
-    // For PWA on iOS, we use the service worker for push notifications
-    // For now, schedule a simple check
-    if ('serviceWorker' in navigator && 'Notification' in window) {
-      const data = Storage.getData();
-      const time = data.settings.reminderTime || '20:00';
-      // Store in localStorage for service worker to pick up
-      localStorage.setItem('margins_reminder_time', time);
-    }
-  },
 
   // ===== ADD BOOK =====
   bindAddBook() {

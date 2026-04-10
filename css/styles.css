@@ -8,9 +8,9 @@
   --text-muted: #9CA3AF;
   --accent: #6366F1;
   --accent-light: #818CF8;
-  --border: #E5E7EB;
-  --shadow: rgba(0, 0, 0, 0.04);
-  --shadow-md: rgba(0, 0, 0, 0.08);
+  --border: #FAFAFA;
+  --shadow: rgba(0, 0, 0, 0.06);
+  --shadow-md: rgba(0, 0, 0, 0.1);
   --danger: #EF4444;
   --success: #22C55E;
   --serif: 'EB Garamond', 'Georgia', serif;
@@ -32,7 +32,7 @@
   --text-muted: #666666;
   --accent: #818CF8;
   --accent-light: #A5B4FC;
-  --border: #2A2A2A;
+  --border: #0F0F0F;
   --shadow: rgba(0, 0, 0, 0.3);
   --shadow-md: rgba(0, 0, 0, 0.4);
 }
@@ -171,7 +171,7 @@ h1, h2, h3 {
   background: var(--bg-card);
   border-radius: var(--radius);
   padding: 20px;
-  box-shadow: 0 1px 3px var(--shadow), 0 0 0 1px var(--border);
+  box-shadow: 0 2px 8px var(--shadow);
 }
 
 .card + .card {
