@@ -1,0 +1,53 @@
+name: Auto Sync Branches
+
+on:
+  push:
+    branches:
+      - '**'
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Configure git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Sync to all other branches
+        run: |
+          SOURCE_BRANCH="${GITHUB_REF#refs/heads/}"
+          echo "Source branch: $SOURCE_BRANCH"
+
+          # Fetch all remote branches
+          git fetch --all
+
+          # Get list of all remote branches (excluding HEAD pointer)
+          BRANCHES=$(git branch -r | grep -v '\->' | sed 's|origin/||' | xargs)
+
+          for BRANCH in $BRANCHES; do
+            # Skip the branch that triggered the workflow
+            if [ "$BRANCH" = "$SOURCE_BRANCH" ]; then
+              echo "Skipping source branch: $BRANCH"
+              continue
+            fi
+
+            echo "--- Syncing $SOURCE_BRANCH -> $BRANCH ---"
+            git checkout "$BRANCH"
+            git pull origin "$BRANCH"
+
+            # Attempt merge; skip this branch if there are conflicts
+            if git merge "origin/$SOURCE_BRANCH" --no-edit; then
+              echo "Merge successful, pushing $BRANCH"
+              git push origin "$BRANCH"
+            else
+              echo "Merge conflict detected for $BRANCH, aborting merge"
+              git merge --abort
+            fi
+          done
