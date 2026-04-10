@@ -15,6 +15,31 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=EB+Garamond:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="css/styles.css">
+  <script>
+    // Cache buster: force reload when new version is deployed
+    (function() {
+      var v = 14;
+      var stored = localStorage.getItem('margins_app_version');
+      if (stored && parseInt(stored) >= v) return;
+      // New version — nuke all caches and reload
+      localStorage.setItem('margins_app_version', v);
+      if ('caches' in window) {
+        caches.keys().then(function(keys) {
+          return Promise.all(keys.map(function(k) { return caches.delete(k); }));
+        }).then(function() {
+          if (navigator.serviceWorker) {
+            navigator.serviceWorker.getRegistrations().then(function(regs) {
+              regs.forEach(function(r) { r.unregister(); });
+            }).then(function() {
+              window.location.reload(true);
+            });
+          } else {
+            window.location.reload(true);
+          }
+        });
+      }
+    })();
+  </script>
 </head>
 <body>
   <!-- Auth screen -->

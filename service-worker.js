@@ -1,7 +1,5 @@
 const CACHE_NAME = 'margins-v14';
 const ASSETS = [
-  '/',
-  '/index.html',
   '/css/styles.css',
   '/js/app.js',
   '/js/storage.js',
@@ -18,7 +16,7 @@ const ASSETS = [
   '/icons/icon-512.png'
 ];
 
-// Install — cache all assets
+// Install — cache assets (not index.html)
 self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => {
@@ -28,7 +26,7 @@ self.addEventListener('install', (event) => {
   self.skipWaiting();
 });
 
-// Activate — clean old caches
+// Activate — clean old caches, take control immediately
 self.addEventListener('activate', (event) => {
   event.waitUntil(
     caches.keys().then((keys) => {
@@ -40,51 +38,44 @@ self.addEventListener('activate', (event) => {
   self.clients.claim();
 });
 
-// Fetch — cache first, then network
+// Fetch strategy:
+// - HTML/navigation: network-first (always get latest)
+// - Same-origin assets: cache-first with network fallback
+// - External: network-only
 self.addEventListener('fetch', (event) => {
   const url = new URL(event.request.url);
 
-  // Don't cache API calls
+  // External requests — network only
   if (url.hostname !== location.hostname) {
     event.respondWith(
-      fetch(event.request).catch(() => {
-        return new Response('Offline', { status: 503 });
+      fetch(event.request).catch(() => new Response('Offline', { status: 503 }))
+    );
+    return;
+  }
+
+  // HTML / navigation requests — network first
+  if (event.request.mode === 'navigate' || url.pathname === '/' || url.pathname.endsWith('.html')) {
+    event.respondWith(
+      fetch(event.request).then((response) => {
+        const clone = response.clone();
+        caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone));
+        return response;
+      }).catch(() => {
+        return caches.match(event.request) || caches.match('/');
       })
     );
     return;
   }
 
+  // All other same-origin assets — cache first
   event.respondWith(
     caches.match(event.request).then((cached) => {
       if (cached) return cached;
       return fetch(event.request).then((response) => {
         const clone = response.clone();
-        caches.open(CACHE_NAME).then((cache) => {
-          cache.put(event.request, clone);
-        });
+        caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone));
         return response;
       });
     })
   );
-});
-
-// Notification scheduling (basic)
-self.addEventListener('message', (event) => {
-  if (event.data && event.data.type === 'SCHEDULE_NOTIFICATION') {
-    // Store reminder time
-    self.reminderTime = event.data.time;
-  }
-});
-
-// Periodic check for notifications (when supported)
-self.addEventListener('periodicsync', (event) => {
-  if (event.tag === 'daily-reminder') {
-    event.waitUntil(
-      self.registration.showNotification('Margins', {
-        body: "Today's lesson is waiting \u{1F4D6}",
-        icon: '/icons/icon-192.png',
-        badge: '/icons/icon-192.png'
-      })
-    );
-  }
 });
