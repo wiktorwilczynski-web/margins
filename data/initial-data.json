@@ -1,0 +1,397 @@
+{
+  "books": [
+    {
+      "id": "90dc55ac-beee-40f3-bc25-75c841bf007b",
+      "title": "Why Nations Fail: The Origins of Power, Prosperity, and Poverty",
+      "author": "Daron Acemoğlu",
+      "coverUrl": null,
+      "currentPage": 0,
+      "totalPages": null,
+      "completed": false,
+      "lessons": [],
+      "quotes": [
+        {
+          "id": "216af7d0-c156-4f6e-b624-af0c1729bc43",
+          "text": "Nations fail today because their extractive economic institutions do not create the incentives needed for people to save, invest, and innovate. Extractive political institutions support these economic institutions by cementing the power of those who benefit from the extraction.",
+          "page": null
+        },
+        {
+          "id": "483ba897-aacd-4be8-b2a2-80b083e95f89",
+          "text": "As we will show, poor countries are poor because those who have power make choices that create poverty.",
+          "page": null
+        },
+        {
+          "id": "a3591bee-9b71-45f3-8b43-c11c43d8ae84",
+          "text": "A businessman who expects his output to be stolen, expropriated, or entirely taxed away will have little incentive to work, let alone any incentive to undertake investments and innovations.",
+          "page": null
+        },
+        {
+          "id": "78b50277-8fee-470f-84f7-f07200f29480",
+          "text": "Economic growth and technological change are accompanied by what the great economist Joseph Schumpeter called creative destruction. They replace the old with the new. New sectors attract resources away from old ones. New firms take business away from established ones. New technologies make existing skills and machines obsolete.",
+          "page": null
+        },
+        {
+          "id": "a0065f5d-c500-4d3c-9937-506bb1bf3455",
+          "text": "Countries such as Great Britain and the United States became rich because their citizens overthrew the elites who controlled power and created a society where political rights were much more broadly distributed, where the government was accountable and responsive to citizens, and where the great mass of people could take advantage of economic opportunities",
+          "page": null
+        },
+        {
+          "id": "7689407b-75d0-4d0b-bb96-593abb6e39d5",
+          "text": "Those controlling political power will eventually find it more beneficial to use their power to limit competition, to increase their share of the pie, or even to steal and loot from others rather than support economic progress.",
+          "page": null
+        }
+      ],
+      "addedAt": "2026-04-10T12:58:10.126354"
+    },
+    {
+      "id": "6e675fc4-84c5-4d43-a6bc-c673bf79a2b7",
+      "title": "Performing Under Pressure: The Science of Doing Your Best When It Matters Most",
+      "author": "Hendrie Weisinger",
+      "coverUrl": null,
+      "currentPage": 0,
+      "totalPages": null,
+      "completed": false,
+      "lessons": [],
+      "quotes": [
+        {
+          "id": "d15eef8b-66a1-4dc3-813d-1ff0d8ecbe7c",
+          "text": "There's no pressure. It is going to be fun, a great game, and I look forward to meeting the challenge.",
+          "page": null
+        },
+        {
+          "id": "df2ad924-3cff-4fde-b0d1-17c06a9d7870",
+          "text": "Think of the high-pressure situations you've been in, and the times you've performed well. You were probably enjoying the moment despite the pressure.",
+          "page": null
+        },
+        {
+          "id": "9bce81e0-7c9c-4890-be44-d4fbadec8cdf",
+          "text": "When we engage in what she terms a \"high-power pose\" where our bodies are more open and expansive—arms open as opposed to closed across our chest, standing straight with shoulders back as opposed to hunched with shoulders folded forward, occupying more space versus less—our brain and body respond by increasing testosterone and decreasing cortisol.",
+          "page": null
+        }
+      ],
+      "addedAt": "2026-04-10T12:58:10.126354"
+    },
+    {
+      "id": "564be633-c32f-4823-a51b-82e43c34bab3",
+      "title": "Loose Quotes",
+      "author": "Various",
+      "coverUrl": null,
+      "currentPage": 0,
+      "totalPages": null,
+      "completed": false,
+      "lessons": [],
+      "quotes": [
+        {
+          "id": "e7fa1d57-8785-4f07-bcae-41f4d8add33b",
+          "text": "Man is not troubled by events but rather how he interprets them.",
+          "page": null
+        }
+      ],
+      "addedAt": "2026-04-10T12:58:10.126354"
+    },
+    {
+      "id": "55c22e69-fd2b-4116-a7c1-29fcbb1437bd",
+      "title": "The Power of Now",
+      "author": "Eckhart Tolle",
+      "coverUrl": null,
+      "currentPage": 0,
+      "totalPages": null,
+      "completed": false,
+      "lessons": [],
+      "quotes": [
+        {
+          "id": "2e4083eb-8f10-4b40-acd5-d44e81995d9b",
+          "text": "Whatever the present moment contains, accept it as if you had chosen it.",
+          "page": null
+        },
+        {
+          "id": "6e525ef4-bd1a-4100-91a8-b3e345c2ef01",
+          "text": "Worry pretends to be necessary but serves no useful purpose.",
+          "page": null
+        },
+        {
+          "id": "9bddaacf-0d24-47dc-a4f9-28d7bd277735",
+          "text": "What a liberation to realize that the \"voice in my head\" is not who I am. Who am I then? The one who sees that.",
+          "page": null
+        }
+      ],
+      "addedAt": "2026-04-10T12:58:10.126354"
+    },
+    {
+      "id": "1af8cd1d-be6f-4755-9164-391a1b6d6846",
+      "title": "The Looming Tower",
+      "author": "Lawrence Wright",
+      "coverUrl": null,
+      "currentPage": 0,
+      "totalPages": null,
+      "completed": false,
+      "lessons": [],
+      "quotes": [
+        {
+          "id": "9b0da028-a325-4b6b-b792-37f3a97c6f3a",
+          "text": "Takfir is the mirror image of Islam, reversing its fundamental principles but maintaining the semblance of orthodoxy. The Quran explicitly states that Muslims shall not kill anyone, except as a punishment for murder.",
+          "page": null
+        },
+        {
+          "id": "3ae1a6c3-d269-4be3-b4ca-47a42833adf9",
+          "text": "A new vision of al-Qaeda was born. Abu Hajer's two fatwas, the first authorizing the attacks on American troops and the second, the murder of innocents, turned al-Qaeda into a global terrorist organisation. Al-Qaeda would concentrate not on fighting armies but on killing civilians.",
+          "page": null
+        },
+        {
+          "id": "b7ca1f30-1a64-42a0-a983-a320fd9fb758",
+          "text": "Democracy, in their [extremists] view, was against Islam because it placed in the hands of people authority that properly belonged to god.",
+          "page": null
+        },
+        {
+          "id": "e71c2198-c8a3-46d0-839a-5e63a19148f2",
+          "text": "Al-Qaeda's duty was to awaken the Islamic nation to the threat posed by the secular, modernizing West.",
+          "page": null
+        }
+      ],
+      "addedAt": "2026-04-10T12:58:10.126354"
+    },
+    {
+      "id": "dec63492-3e13-47a1-b1e3-cd45aa30afbf",
+      "title": "When Breath Becomes Air",
+      "author": "Paul Kalanithi",
+      "coverUrl": null,
+      "currentPage": 0,
+      "totalPages": null,
+      "completed": false,
+      "lessons": [],
+      "quotes": [
+        {
+          "id": "22c0fce6-3983-407d-bcc4-1d0fefa4893c",
+          "text": "I began to realize that coming in such close contact with my own mortality had changed both nothing and everything. Before my cancer was diagnosed, I knew that someday I would die, but I didn't know when. After the diagnosis, I knew that someday I would die, but I didn't know when. But now I knew it acutely. The problem wasn't really a scientific one. The fact of death is unsettling. Yet there is no other way to live.",
+          "page": null
+        },
+        {
+          "id": "46b8f6d7-8e3a-4d03-9d76-b03e0f86ff91",
+          "text": "The angst of facing mortality has no remedy in probability.",
+          "page": null
+        },
+        {
+          "id": "26a96661-de0b-4336-9358-66f2e3889886",
+          "text": "I can't go on. I'll go on.",
+          "page": null
+        },
+        {
+          "id": "30a3da61-e501-4dc5-ac13-e08d0623e9ac",
+          "text": "If you believe that science provides no basis for God, then you are almost obligated to conclude that science provides no basis for meaning [or love and hate] and, therefore, life itself doesn't have any.",
+          "page": null
+        }
+      ],
+      "addedAt": "2026-04-10T12:58:10.126354"
+    },
+    {
+      "id": "90478449-17db-461a-8c47-2afbdb8f7cbf",
+      "title": "The Shock Doctrine",
+      "author": "Naomi Klein",
+      "coverUrl": null,
+      "currentPage": 0,
+      "totalPages": null,
+      "completed": false,
+      "lessons": [],
+      "quotes": [
+        {
+          "id": "673548bb-09a7-41a7-b3c1-590387fa58ee",
+          "text": "I call these [New Orleans school privatization after Hurricane Katrina] orchestrated raids in the public sphere in the wake of catastrophic events, combined with the treatment of disasters as exciting market opportunities, \"disaster capitalism\".",
+          "page": null
+        },
+        {
+          "id": "877133ab-74bc-4377-8933-2da021a62d7f",
+          "text": "[Milton Friedman] observed that \"only a crisis—actual or perceived—produces real change.",
+          "page": null
+        },
+        {
+          "id": "dc389249-d484-437d-97c5-d49831eae8ad",
+          "text": "That is what makes the Bush regime different: after the attacks of September 11, it dared to demand the right to torture without shame … prisoners captured in Afghanistan were not covered by the Geneva Conventions because they were \"enemy combatants,\" not POWs.",
+          "page": null
+        },
+        {
+          "id": "37430b9d-ce01-42b6-92a4-d14dc1507953",
+          "text": "Developmentalist economists [Keynesians] argued that their countries would finally escape the cycle of poverty only if they pursued an inward-oriented industrialization strategy, instead of relying on the export of natural resources … [they] were able to boast a series of impressive success stories [Chile, Uruguay, Argentina] … by regulating or even nationalizing oil, minerals and other key industries so that a healthy share of the proceeds fed a government-led development process.",
+          "page": null
+        },
+        {
+          "id": "c235d000-60ab-4f55-99f8-f373d270da69",
+          "text": "[Allende won the Chilean election] promising to put into government hands large sectors of the economy that were being run by foreign and local corporations … U.S. multinationals feared that Allende represented the beginning of a Latin America-wide trend and many were unwilling to accept the prospect of losing what was a growing portion of their bottom line.",
+          "page": null
+        },
+        {
+          "id": "665e9eca-b994-486a-8a20-446963784c4c",
+          "text": "[Following CIA-backed mass massacre of Indonesian communists and colleagues] The Berkeley Mafia could not have been more hospitable to foreign investor wanting to mine Indonesia's immense mineral and oil wealth, described by Richard Nixon as \"the greatest prize in the Southeast Asian area.\" They passed laws allowing foreign companies to own 100 percent of these resources … within two years, Indonesia's natural wealth was being divided up among the largest mining and energy companies in the world.",
+          "page": null
+        },
+        {
+          "id": "1475ba0c-17da-4bb8-82d3-b16516bdee6d",
+          "text": "[Chile's coup was led by a proposal emphasizing] privatization, deregulation and cuts to social spending—the free market trinity.",
+          "page": null
+        },
+        {
+          "id": "988b345d-6bcf-45d7-b467-7d4dc6189d1f",
+          "text": "Since the fall of Communism, free markets and free people have been packaged as a single ideology that claims to be humanity's best defense against repeating a history filled with mass graves, killing fields and torture chambers. Yet in the Southern Cone, the first place where the contemporary religion of unfettered free markets escaped the basement workshops of UChicago and was applied to the real world; it was predicated on the overthrow of democracy in country after country.",
+          "page": null
+        },
+        {
+          "id": "cfd806df-ebfe-4978-b533-a24de50f4c0c",
+          "text": "Much as the terrorist attacks of September 11, 2001, would take an unpopular president and hand him an opportunity to launch a massive privatization initiative (in Bush's case, the privatization of security, welfare and reconstruction), Thatcher used her war [Falkland's] to launch the first mass privatization auction in a Western democracy.",
+          "page": null
+        },
+        {
+          "id": "8ba38d2b-7ed5-4a25-8d98-e454fa0e40e1",
+          "text": "When the market crashed Keynes and his disciples, previously voices in the wilderness, had been ready and waiting with their ideas, their new deal solutions. In the 70s and early 80s Friedman and his corporate underwriters had attempted to mimic this process with a unique brand of intellectual disaster preparedness.",
+          "page": null
+        },
+        {
+          "id": "7ad5c77a-be0f-422d-9d86-340fec590bee",
+          "text": "[Mazowiecki announced that Poland's brand of shock therapy would include] privatization of state industry, the creation of a stock exchange and capital markets, a convertible currency, and a shift from heavy industry to consumer goods production, as well as budget cuts – as fast as possible and all at once.",
+          "page": null
+        },
+        {
+          "id": "ef0b99fd-5f17-49cd-89bf-1f5953f5f714",
+          "text": "In December 1994, Yeltsin did what so many desperate leaders have done throughout history to hold onto power: he started a war.",
+          "page": null
+        },
+        {
+          "id": "91da225e-6c6c-4ef6-a6f5-a979d6e97362",
+          "text": "About eighteen months into Poland's period of \"extraordinary politics\" [1990 onwards], Solidarity's base had had enough and demanded an end to the experiment … Faced with this pressure from below, the government was forced to slow down its more ambitious privatization plans … Interestingly, Poland's economy began growing quickly in this same period.",
+          "page": null
+        },
+        {
+          "id": "68926b69-0a63-46f1-aee1-84b78c59273e",
+          "text": "[The market] is the genius of unfettered capitalism: it's self-enforcing. Once countries have opened themselves up to the global market's temperamental moods, any departure from Chicago School orthodoxy is instantly punished by traders in New York and London who bet against the offending country's currency, causing a deeper crisis and the need for more loans, with more conditions attached.",
+          "page": null
+        },
+        {
+          "id": "997a5e13-a8f1-47b9-ad5c-c887138b1e81",
+          "text": "[Regarding South Africa post-apartheid] Nelson Mandela has cited the debt burden [$4.5bn yearly] as the single greatest obstacle to keeping the promises of the Freedom Charter. [The government often sold national enterprises to meet debt demands, continuing the contemporary privatization trend]",
+          "page": null
+        },
+        {
+          "id": "ff02d220-ef98-4076-a703-7d5b1095e35c",
+          "text": "Russia's [post-USSR] \"economic reforms\" can claim credit for the impoverishment of 72 million people in only 8 years.",
+          "page": null
+        },
+        {
+          "id": "3c151c51-fb9a-4526-aac7-45a89d5bb2bf",
+          "text": "[Davison Budhoo, former IMF staffer turned whistleblower] accused the fund of using [fraudulent] statistics as \"lethal\" weapons … exaggerating the numbers in IMF reports on oil-rich Trinidad and Tobago in order to make the country look far less stable than it actually was… taken into account by financial markets, forcing the country to beg the IMF for a bailout. The fund then demanded that it accepts what Budhoo described as the IMF's \"deadliest medicine\": layoffs, wage cuts, and the \"whole gamut\" of structural adjustment policies.",
+          "page": null
+        },
+        {
+          "id": "a061d124-ab66-4249-99f2-8238afdeddfa",
+          "text": "[Pseudo crisis - creating or overblowing a crisis as a political tool to ease neoliberal economic reform] Moody's was upbeat about Canada, but the Canadian press [affected by corporate-funded think tanks] constantly presented the national finances as catastrophic… As a direct result, social programmes for the country's unemployed were radically eroded and have never recovered.",
+          "page": null
+        },
+        {
+          "id": "e9b50f3b-dc64-468e-a1fa-b4bf9f1bb2ce",
+          "text": "[Regarding US foreign policy / intervention's 3 step process] First, a US-based multinational corporation faces some kind of threat to its bottom line by the actions a foreign government … Second, US politicians hear of this corporate setback and reinterpret it as an attack on the US … The third stage happens when the politicians have to sell the need for intervention to the public, at which point it becomes a broadly drawn struggle of good versus evil.",
+          "page": null
+        },
+        {
+          "id": "4fc9b357-a41e-42f9-891b-b359f6eca9e9",
+          "text": "[On the revolving door between government and industry] That is pretty much the philosophy: stay in government long enough to get an impressive title in a department handing out big contracts and to collect inside information on what will sell, then quit and sell access to your former colleagues.",
+          "page": null
+        },
+        {
+          "id": "cf713aa6-e08d-4794-9f20-37cd23dde6aa",
+          "text": "The alliance between a small corporate elite and a right-wing government has been written off as some sort of aberration—mafia capitalism, oligarchy capitalism, and now, under Bush, \"crony capitalism\". But it's not an aberration; it is where the entire Chicago school crusade—with its triple obsessions—privatization, deregulation and union-busting—has been leading.",
+          "page": null
+        }
+      ],
+      "addedAt": "2026-04-10T12:58:10.126354"
+    },
+    {
+      "id": "d0de9f2d-e109-4274-8189-d459479712d7",
+      "title": "Grit",
+      "author": "Angela Duckworth",
+      "coverUrl": null,
+      "currentPage": 0,
+      "totalPages": null,
+      "completed": false,
+      "lessons": [],
+      "quotes": [
+        {
+          "id": "8dc1df54-e790-4b9c-84d0-2a9d82593b58",
+          "text": "When you keep searching for ways to change your situation for the better, you stand a chance of finding them. When you stop searching, assuming they can't be found, you guarantee they won't.",
+          "page": null
+        }
+      ],
+      "addedAt": "2026-04-10T12:58:10.126354"
+    },
+    {
+      "id": "5672bcfb-4797-43c6-9d69-db40d73dfb96",
+      "title": "Naked Economics",
+      "author": "Charles Wheelan",
+      "coverUrl": null,
+      "currentPage": 0,
+      "totalPages": null,
+      "completed": false,
+      "lessons": [],
+      "quotes": [
+        {
+          "id": "2ea963a6-9ea9-462d-9a9e-b0c2b625783c",
+          "text": "Having a child is more expensive than it was fifty years ago … not because it is more expensive to feed and clothe another little urchin around the house … [but rather because] the primary cost of raising a child today is the cost of the earnings foregone when a parent, still usually the mother, quits or cuts back on work to look after the child at home.",
+          "page": null
+        }
+      ],
+      "addedAt": "2026-04-10T12:58:10.126354"
+    },
+    {
+      "id": "25c4180c-36e0-4de1-a826-2e4c04fd9486",
+      "title": "The Big Short",
+      "author": "Michael Lewis",
+      "coverUrl": null,
+      "currentPage": 0,
+      "totalPages": null,
+      "completed": false,
+      "lessons": [],
+      "quotes": [
+        {
+          "id": "15467e78-721b-433f-9029-7e0806442bfe",
+          "text": "The market might have learned a simple lesson: Don't make loans to people who can't repay them. Instead it learned a complicated one: You can keep on making these loans, just don't keep them on your books. Make the loans, then sell them off to the fixed income departments of big Wall Street investment banks, which will in turn package them into bonds and sell them to investors.",
+          "page": null
+        },
+        {
+          "id": "c43e5627-4095-4a88-816d-35157bf53025",
+          "text": "The creation of the mortgage bond market, a decade earlier, had extended Wall Street into a place it had never before been: the debts of ordinary Americans.",
+          "page": null
+        },
+        {
+          "id": "a9fa0bf8-ba8d-45bf-9e01-3734e10f0745",
+          "text": "A thought crossed his mind: How do you make poor people feel wealthy when wages are stagnant? You give them cheap loans.",
+          "page": null
+        }
+      ],
+      "addedAt": "2026-04-10T12:58:10.126354"
+    },
+    {
+      "id": "aff41bba-3d43-4e56-8977-e45fe2cab0db",
+      "title": "Nexus",
+      "author": "Yuval Noah Harari",
+      "coverUrl": null,
+      "currentPage": 0,
+      "totalPages": null,
+      "completed": false,
+      "lessons": [],
+      "quotes": [
+        {
+          "id": "98f37a6c-e931-40f6-8944-294a4b78c3e3",
+          "text": "In its more extreme versions, populism posits that there is no objective truth at all and that everyone has 'their own truth', which they wield to vanquish rivals. According to this worldview, power is the only reality. All social interactions are power struggles, because humans are only interested in power.",
+          "page": null
+        },
+        {
+          "id": "bf4c2ba2-1265-402c-8910-8d684df66708",
+          "text": "Trusting only 'my own research' may sound scientific, but in practice it amounts to believing that there is no objective truth… Science is a collaborative institutional effort rather than a personal quest.",
+          "page": null
+        },
+        {
+          "id": "4d2e992e-e4f4-4a20-8eec-db704b5edf05",
+          "text": "One of the recurrent paradoxes of populism is that it starts by warning us that all human elites are driven by a dangerous hunger for power, but often ends by entrusting all power to a single ambitious human.",
+          "page": null
+        }
+      ],
+      "addedAt": "2026-04-10T12:58:10.126354"
+    }
+  ]
+}

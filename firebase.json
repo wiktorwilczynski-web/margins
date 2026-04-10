@@ -1,0 +1,23 @@
+{
+  "hosting": {
+    "public": ".",
+    "ignore": [
+      "firebase.json",
+      ".firebase",
+      ".claude",
+      "README.md",
+      ".firebaserc"
+    ],
+    "headers": [
+      {
+        "source": "/service-worker.js",
+        "headers": [
+          {
+            "key": "Cache-Control",
+            "value": "no-cache"
+          }
+        ]
+      }
+    ]
+  }
+}
