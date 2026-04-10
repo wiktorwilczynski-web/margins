@@ -6,7 +6,8 @@
       ".firebase",
       ".claude",
       "README.md",
-      ".firebaserc"
+      ".firebaserc",
+      "firestore.rules"
     ],
     "headers": [
       {
@@ -19,5 +20,8 @@
         ]
       }
     ]
+  },
+  "firestore": {
+    "rules": "firestore.rules"
   }
 }

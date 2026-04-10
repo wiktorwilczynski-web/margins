@@ -8,8 +8,16 @@ const App = {
   currentFlashcard: null,
   connectionPair: null,
 
+  initialized: false,
+
   async init() {
-    await DataLoader.loadInitialData();
+    if (this.initialized) {
+      // Just re-render on re-auth
+      this.applyTheme();
+      this.renderTab('today');
+      return;
+    }
+    this.initialized = true;
     this.applyTheme();
     this.bindNavigation();
     this.bindSettings();
@@ -919,6 +927,14 @@ const App = {
       }
     });
 
+    // Sign out
+    document.getElementById('sign-out').addEventListener('click', () => {
+      if (window.Auth) {
+        window.Auth.signOut();
+        modal.classList.add('hidden');
+      }
+    });
+
     // Reset
     document.getElementById('reset-app').addEventListener('click', () => {
       if (confirm('Are you sure? This will delete all your data.')) {
@@ -1214,5 +1230,6 @@ Rules:
   }
 };
 
-// Initialize
-document.addEventListener('DOMContentLoaded', () => App.init());
+// App.init() is called by auth.js after successful login
+// Make App available globally
+window.App = App;

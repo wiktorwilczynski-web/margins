@@ -29,6 +29,10 @@ const Storage = {
 
   save(data) {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+    // Sync to cloud if authenticated
+    if (window.Auth && window.Auth.currentUserId) {
+      window.Auth.syncToCloud();
+    }
   },
 
   getData() {

@@ -1,4 +1,4 @@
-const CACHE_NAME = 'margins-v1';
+const CACHE_NAME = 'margins-v2';
 const ASSETS = [
   '/',
   '/index.html',
@@ -8,6 +8,10 @@ const ASSETS = [
   '/js/covers.js',
   '/js/gemini.js',
   '/js/data.js',
+  '/js/auth.js',
+  '/firebase/firebase-app.js',
+  '/firebase/firebase-auth.js',
+  '/firebase/firebase-firestore.js',
   '/data/initial-data.json',
   '/manifest.json',
   '/icons/icon-192.png',
