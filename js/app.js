@@ -1344,28 +1344,14 @@ Rules:
   // ===== PULL TO REFRESH =====
   bindPullToRefresh() {
     const main = document.getElementById('main-content');
-    const THRESHOLD = 140; // pixels past top edge to trigger
+    const THRESHOLD = 150;
     let startY = 0;
     let pulling = false;
     let readyToRefresh = false;
-    let indicator = null;
-
-    function getIndicator() {
-      if (!indicator) {
-        indicator = document.createElement('div');
-        indicator.className = 'pull-indicator';
-        indicator.style.position = 'absolute';
-        indicator.style.top = '0';
-        indicator.style.left = '0';
-        indicator.style.right = '0';
-        indicator.style.zIndex = '10';
-        main.style.position = 'relative';
-        main.prepend(indicator);
-      }
-      return indicator;
-    }
+    let cooldown = false;
 
     main.addEventListener('touchstart', (e) => {
+      if (cooldown) return;
       if (main.scrollTop <= 0) {
         startY = e.touches[0].clientY;
         pulling = true;
@@ -1374,46 +1360,36 @@ Rules:
     }, { passive: true });
 
     main.addEventListener('touchmove', (e) => {
-      if (!pulling || main.scrollTop > 0) {
+      if (!pulling || cooldown || main.scrollTop > 0) {
         pulling = false;
         return;
       }
       const diff = e.touches[0].clientY - startY;
-      if (diff > 20) {
-        const el = getIndicator();
-        if (diff >= THRESHOLD) {
-          el.textContent = 'Release to refresh';
-          el.style.opacity = '1';
-          readyToRefresh = true;
-        } else {
-          el.textContent = 'Pull down to refresh';
-          el.style.opacity = String(Math.min(1, diff / THRESHOLD));
-          readyToRefresh = false;
-        }
+      if (diff >= THRESHOLD) {
+        readyToRefresh = true;
+      } else {
+        readyToRefresh = false;
       }
     }, { passive: true });
 
     main.addEventListener('touchend', () => {
-      if (readyToRefresh) {
+      if (readyToRefresh && !cooldown) {
+        cooldown = true;
         this.handleRefresh();
+        // Block all pull-to-refresh for 3 seconds after triggering
+        setTimeout(() => { cooldown = false; }, 3000);
       }
       pulling = false;
       readyToRefresh = false;
-      if (indicator) {
-        indicator.style.opacity = '0';
-        setTimeout(() => { if (indicator) indicator.textContent = ''; }, 300);
-      }
     }, { passive: true });
   },
 
   handleRefresh() {
-    // Check for service worker updates
     if (navigator.serviceWorker && navigator.serviceWorker.controller) {
       navigator.serviceWorker.getRegistration().then(reg => {
         if (reg) reg.update();
       });
     }
-    // Re-render current tab
     this.showToast('Refreshed');
     this.renderTab(this.currentTab);
   },
