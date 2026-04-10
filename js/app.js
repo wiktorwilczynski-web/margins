@@ -909,7 +909,18 @@ const App = {
   },
 
   openChatWithContext(type, id) {
-    this.chatContext = { type, id };
+    // If context is a lesson, find its parent book for the dropdown
+    if (type === 'lesson') {
+      const data = Storage.getData();
+      for (const book of data.books) {
+        if (book.lessons.some(l => l.id === id)) {
+          this.chatContext = { type: 'book', id: book.id };
+          break;
+        }
+      }
+    } else {
+      this.chatContext = { type, id };
+    }
     this.renderChatPopup();
     document.getElementById('chat-modal').classList.remove('hidden');
   },
