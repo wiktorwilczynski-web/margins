@@ -1316,26 +1316,66 @@ Rules:
   // ===== PULL TO REFRESH =====
   bindPullToRefresh() {
     const main = document.getElementById('main-content');
+    const THRESHOLD = 140; // pixels past top edge to trigger
     let startY = 0;
     let pulling = false;
+    let readyToRefresh = false;
+    let indicator = null;
+
+    function getIndicator() {
+      if (!indicator) {
+        indicator = document.createElement('div');
+        indicator.className = 'pull-indicator';
+        indicator.style.position = 'absolute';
+        indicator.style.top = '0';
+        indicator.style.left = '0';
+        indicator.style.right = '0';
+        indicator.style.zIndex = '10';
+        main.style.position = 'relative';
+        main.prepend(indicator);
+      }
+      return indicator;
+    }
 
     main.addEventListener('touchstart', (e) => {
-      if (main.scrollTop === 0) {
+      if (main.scrollTop <= 0) {
         startY = e.touches[0].clientY;
         pulling = true;
+        readyToRefresh = false;
       }
     }, { passive: true });
 
     main.addEventListener('touchmove', (e) => {
-      if (!pulling) return;
-      const diff = e.touches[0].clientY - startY;
-      if (diff > 80 && main.scrollTop === 0) {
+      if (!pulling || main.scrollTop > 0) {
         pulling = false;
-        this.handleRefresh();
+        return;
+      }
+      const diff = e.touches[0].clientY - startY;
+      if (diff > 20) {
+        const el = getIndicator();
+        if (diff >= THRESHOLD) {
+          el.textContent = 'Release to refresh';
+          el.style.opacity = '1';
+          readyToRefresh = true;
+        } else {
+          el.textContent = 'Pull down to refresh';
+          el.style.opacity = String(Math.min(1, diff / THRESHOLD));
+          readyToRefresh = false;
+        }
       }
     }, { passive: true });
 
-    main.addEventListener('touchend', () => { pulling = false; }, { passive: true });
+    main.addEventListener('touchend', () => {
+      if (readyToRefresh) {
+        this.handleRefresh();
+      }
+      pulling = false;
+      readyToRefresh = false;
+      if (indicator) {
+        indicator.style.opacity = '0';
+        setTimeout(() => { if (indicator) indicator.textContent = ''; }, 300);
+      }
+    }, { passive: true });
   },
 
   handleRefresh() {
