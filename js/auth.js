@@ -222,6 +222,9 @@ onAuthStateChanged(auth, async (user) => {
     document.getElementById('auth-screen').style.display = 'none';
     document.getElementById('app').style.display = 'flex';
     window.App.init();
+
+    // Fetch missing covers in background
+    Covers.fetchMissingCovers();
   } else {
     currentUserId = null;
     if (unsubscribeSnapshot) {

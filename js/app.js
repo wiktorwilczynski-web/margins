@@ -22,6 +22,8 @@ const App = {
     this.bindNavigation();
     this.bindSettings();
     this.bindAddBook();
+    this.bindPullToRefresh();
+    this.registerSW();
     this.renderTab('today');
     this.addToast();
   },
@@ -65,99 +67,75 @@ const App = {
     const allQuotes = this.getAllQuotes(data);
     const todayStr = new Date().toISOString().slice(0, 10);
     const checkedInToday = streak.lastCheckIn === todayStr;
-
-    // Check if it's Sunday
     const isSunday = new Date().getDay() === 0;
+
+    // Time-based greeting
+    const hour = new Date().getHours();
+    const timeGreeting = hour < 12 ? 'Good morning' : hour < 18 ? 'Good afternoon' : 'Good evening';
 
     let html = '<div class="fade-in">';
 
-    // Greeting
-    const greetingText = streak.current > 0
-      ? `Day ${streak.current}`
-      : (streak.lastCheckIn ? 'Welcome back' : 'Welcome');
-    const fireEmoji = streak.current > 0 ? ' \u{1F525}' : '';
-
+    // --- Top: Streak bar (minimal, no emojis) ---
     html += `
-      <div class="greeting">
-        <h2>${greetingText}${fireEmoji}</h2>
-        ${streak.current > 0 ? `<span class="streak-badge">${streak.current} day streak</span>` : ''}
+      <div class="dash-header">
+        <div class="dash-greeting">${timeGreeting}</div>
+        <div class="dash-streak-row">
+          <div class="dash-streak-num">${streak.current}</div>
+          <div class="dash-streak-meta">
+            <div class="dash-streak-label">day streak</div>
+            <div class="dash-streak-best">best: ${streak.longest}</div>
+          </div>
+          ${!checkedInToday ? '<div class="dash-streak-dot pulse"></div>' : '<div class="dash-streak-done">done</div>'}
+        </div>
       </div>
     `;
 
-    // Weekly reflection (Sundays)
-    if (isSunday) {
-      const weekLessons = allLessons.slice(0, 3);
-      if (weekLessons.length > 0) {
-        const existingReflection = data.weeklyReflections.find(r => r.weekOf === todayStr);
-        html += `
-          <div class="reflection-card">
-            <h3>Weekly Reflection</h3>
-            <div class="reflection-lessons">
-              ${weekLessons.map(l => `<div>\u2022 ${l.title}</div>`).join('')}
-            </div>
-            <input type="text" id="reflection-input" placeholder="What stuck with you this week?" value="${existingReflection?.note || ''}">
-            <button class="btn btn-sm" id="save-reflection">Save reflection</button>
-          </div>
-        `;
-      }
-    }
-
-    // Today's lesson or quote card
+    // --- Today's reading card ---
     if (allLessons.length > 0) {
-      // Deterministic pick based on date
       const dayIndex = this.dateToDayIndex(todayStr);
       const lesson = allLessons[dayIndex % allLessons.length];
       const book = data.books.find(b => b.lessons.some(l => l.id === lesson.id));
 
       html += `
-        <div class="lesson-card">
-          <div class="lesson-title">${lesson.title}</div>
-          <div class="lesson-body">${lesson.body}</div>
-          <div class="lesson-source">${book ? book.title : ''}</div>
+        <div class="dash-section-label">Today's lesson</div>
+        <div class="dash-lesson-card">
+          <div class="dash-lesson-title">${lesson.title}</div>
+          <div class="dash-lesson-body">${lesson.body}</div>
+          <div class="dash-lesson-source">${book ? book.title : ''}</div>
         </div>
       `;
 
-      // Check-in button
       if (!checkedInToday) {
-        html += `<button class="btn btn-primary checkin-btn" id="checkin-btn">Mark as read today</button>`;
+        html += `<button class="btn btn-primary checkin-btn" id="checkin-btn">I've read this</button>`;
       } else {
-        html += `<button class="btn btn-primary checkin-btn done" disabled>Read today \u2713</button>`;
-
-        // Recall buttons
         html += `
-          <div class="recall-buttons">
-            <button class="btn btn-sm" data-recall="remembered" data-lesson-id="${lesson.id}">Remembered \u2713</button>
-            <button class="btn btn-sm" data-recall="forgot" data-lesson-id="${lesson.id}">Need to review \u2717</button>
+          <div class="dash-recall-row">
+            <span class="dash-recall-label">Did you remember?</span>
+            <button class="dash-recall-btn" data-recall="remembered" data-lesson-id="${lesson.id}">Yes</button>
+            <button class="dash-recall-btn" data-recall="forgot" data-lesson-id="${lesson.id}">No</button>
           </div>
-        `;
-
-        // Follow-up prompt
-        html += `
           <div class="followup-prompt">
-            <a id="ask-followup" data-lesson-id="${lesson.id}">Ask a follow-up?</a>
+            <a id="ask-followup" data-lesson-id="${lesson.id}">Ask a follow-up</a>
           </div>
         `;
       }
     } else if (allQuotes.length > 0) {
-      // No lessons, show a quote
       const dayIndex = this.dateToDayIndex(todayStr);
       const quote = allQuotes[dayIndex % allQuotes.length];
       const book = data.books.find(b => b.quotes.some(q => q.id === quote.id));
 
       html += `
-        <div class="quote-card">
-          "${quote.text}"
-          <div class="quote-source">\u2014 ${book ? book.author + ', ' + book.title : ''}</div>
+        <div class="dash-section-label">Today's quote</div>
+        <div class="dash-quote-card">
+          <div class="dash-quote-text">${quote.text}</div>
+          <div class="dash-quote-source">${book ? book.author + ', ' + book.title : ''}</div>
         </div>
       `;
 
       if (!checkedInToday) {
-        html += `<button class="btn btn-primary checkin-btn" id="checkin-btn">Mark as read today</button>`;
-      } else {
-        html += `<button class="btn btn-primary checkin-btn done" disabled>Read today \u2713</button>`;
+        html += `<button class="btn btn-primary checkin-btn" id="checkin-btn">I've read this</button>`;
       }
     } else {
-      // Empty state
       html += `
         <div class="empty-state">
           <h3>Your reading journey starts here</h3>
@@ -166,61 +144,99 @@ const App = {
       `;
     }
 
-    // Week summary
+    // --- Quick stats row ---
+    const totalQuotes = allQuotes.length;
+    const booksWithLessons = data.books.filter(b => b.lessons.length > 0).length;
     html += `
-      <div class="week-summary">
-        <h3>This week</h3>
-        <div class="summary-stats">
-          <div class="stat-item">
-            <div class="stat-value">${data.books.length}</div>
-            <div class="stat-label">Books</div>
-          </div>
-          <div class="stat-item">
-            <div class="stat-value">${allLessons.length}</div>
-            <div class="stat-label">Lessons</div>
-          </div>
-          <div class="stat-item">
-            <div class="stat-value">${streak.longest}</div>
-            <div class="stat-label">Best streak</div>
-          </div>
+      <div class="dash-stats">
+        <div class="dash-stat">
+          <div class="dash-stat-val">${data.books.length}</div>
+          <div class="dash-stat-lbl">books</div>
+        </div>
+        <div class="dash-stat-divider"></div>
+        <div class="dash-stat">
+          <div class="dash-stat-val">${allLessons.length}</div>
+          <div class="dash-stat-lbl">lessons</div>
+        </div>
+        <div class="dash-stat-divider"></div>
+        <div class="dash-stat">
+          <div class="dash-stat-val">${totalQuotes}</div>
+          <div class="dash-stat-lbl">quotes</div>
+        </div>
+        <div class="dash-stat-divider"></div>
+        <div class="dash-stat">
+          <div class="dash-stat-val">${data.connections.length}</div>
+          <div class="dash-stat-lbl">connections</div>
         </div>
       </div>
     `;
 
+    // --- Recent books (horizontal scroll) ---
+    if (data.books.length > 0) {
+      const recentBooks = [...data.books].sort((a, b) => (b.addedAt || '').localeCompare(a.addedAt || '')).slice(0, 6);
+      html += `
+        <div class="dash-section-label">Your books</div>
+        <div class="dash-books-scroll">
+          ${recentBooks.map(b => `
+            <div class="dash-book-thumb" data-book-id="${b.id}">
+              ${b.coverUrl
+                ? `<img src="${b.coverUrl}" alt="${b.title}" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">`
+                : ''}
+              <div class="dash-book-thumb-ph" ${b.coverUrl ? 'style="display:none"' : ''}>${b.title.split(':')[0]}</div>
+            </div>
+          `).join('')}
+        </div>
+      `;
+    }
+
+    // --- Weekly reflection (Sundays) ---
+    if (isSunday) {
+      const weekLessons = allLessons.slice(0, 3);
+      if (weekLessons.length > 0) {
+        const existingReflection = data.weeklyReflections.find(r => r.weekOf === todayStr);
+        html += `
+          <div class="dash-section-label">Weekly reflection</div>
+          <div class="reflection-card">
+            <div class="reflection-lessons">
+              ${weekLessons.map(l => `<div>${l.title}</div>`).join('')}
+            </div>
+            <input type="text" id="reflection-input" placeholder="What stuck with you?" value="${existingReflection?.note || ''}">
+            <button class="btn btn-sm" id="save-reflection">Save</button>
+          </div>
+        `;
+      }
+    }
+
     html += '</div>';
     main.innerHTML = html;
 
-    // Bind events
+    // --- Bind events ---
     const checkinBtn = document.getElementById('checkin-btn');
     if (checkinBtn) {
       checkinBtn.addEventListener('click', () => this.handleCheckIn());
     }
 
-    // Recall buttons
     main.querySelectorAll('[data-recall]').forEach(btn => {
       btn.addEventListener('click', () => {
         const lessonId = btn.dataset.lessonId;
         const recalled = btn.dataset.recall === 'remembered';
         this.handleRecall(lessonId, recalled);
-        btn.parentElement.innerHTML = recalled
-          ? '<div style="text-align:center;color:var(--success);font-size:14px">Great memory!</div>'
-          : '<div style="text-align:center;color:var(--accent);font-size:14px">It\'ll come back to you.</div>';
+        btn.closest('.dash-recall-row').innerHTML = recalled
+          ? '<span class="dash-recall-result">Solid recall.</span>'
+          : '<span class="dash-recall-result">Noted \u2014 this will come back sooner.</span>';
       });
     });
 
-    // Follow-up
     const followup = document.getElementById('ask-followup');
     if (followup) {
       followup.addEventListener('click', () => {
-        const lessonId = followup.dataset.lessonId;
-        this.chatContext = { type: 'lesson', id: lessonId };
+        this.chatContext = { type: 'lesson', id: followup.dataset.lessonId };
         document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
         document.querySelector('[data-tab="ask"]').classList.add('active');
         this.renderTab('ask');
       });
     }
 
-    // Weekly reflection save
     const saveReflection = document.getElementById('save-reflection');
     if (saveReflection) {
       saveReflection.addEventListener('click', () => {
@@ -242,6 +258,11 @@ const App = {
         this.showToast('Reflection saved');
       });
     }
+
+    // Book thumbs navigation
+    main.querySelectorAll('.dash-book-thumb').forEach(thumb => {
+      thumb.addEventListener('click', () => this.openBookHub(thumb.dataset.bookId));
+    });
   },
 
   handleCheckIn() {
@@ -1227,6 +1248,60 @@ Rules:
     toast.textContent = msg;
     toast.classList.add('show');
     setTimeout(() => toast.classList.remove('show'), 2000);
+  },
+
+  // ===== PULL TO REFRESH =====
+  bindPullToRefresh() {
+    const main = document.getElementById('main-content');
+    let startY = 0;
+    let pulling = false;
+
+    main.addEventListener('touchstart', (e) => {
+      if (main.scrollTop === 0) {
+        startY = e.touches[0].clientY;
+        pulling = true;
+      }
+    }, { passive: true });
+
+    main.addEventListener('touchmove', (e) => {
+      if (!pulling) return;
+      const diff = e.touches[0].clientY - startY;
+      if (diff > 80 && main.scrollTop === 0) {
+        pulling = false;
+        this.handleRefresh();
+      }
+    }, { passive: true });
+
+    main.addEventListener('touchend', () => { pulling = false; }, { passive: true });
+  },
+
+  handleRefresh() {
+    // Check for service worker updates
+    if (navigator.serviceWorker && navigator.serviceWorker.controller) {
+      navigator.serviceWorker.getRegistration().then(reg => {
+        if (reg) reg.update();
+      });
+    }
+    // Re-render current tab
+    this.showToast('Refreshed');
+    this.renderTab(this.currentTab);
+  },
+
+  // ===== SERVICE WORKER =====
+  registerSW() {
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('/service-worker.js').then(reg => {
+        // Listen for updates
+        reg.addEventListener('updatefound', () => {
+          const newWorker = reg.installing;
+          newWorker.addEventListener('statechange', () => {
+            if (newWorker.state === 'activated') {
+              this.showToast('App updated — pull down to refresh');
+            }
+          });
+        });
+      });
+    }
   }
 };
 
