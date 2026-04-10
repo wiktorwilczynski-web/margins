@@ -74,11 +74,11 @@ function startRealtimeSync() {
     const cloudData = snap.data();
     const localData = Storage.getData();
 
-    // If cloud is newer, merge it
+    // If cloud is newer, merge it — but DON'T trigger syncToCloud
     if (cloudData.lastSync && (!localData.lastSync || cloudData.lastSync > localData.lastSync)) {
-      // Preserve local settings that shouldn't be overwritten
       cloudData.settings = cloudData.settings || localData.settings;
-      Storage.save(cloudData);
+      // Save locally without triggering cloud sync (avoid infinite loop)
+      localStorage.setItem('margins_data', JSON.stringify(cloudData));
       // Re-render current tab
       if (window.App && window.App.currentTab) {
         window.App.renderTab(window.App.currentTab);

@@ -1039,6 +1039,18 @@ const App = {
     });
 
     // Sign out
+    // Refresh app
+    document.getElementById('refresh-app').addEventListener('click', () => {
+      if (navigator.serviceWorker) {
+        navigator.serviceWorker.getRegistration().then(reg => {
+          if (reg) reg.update();
+        });
+      }
+      caches.keys().then(keys => Promise.all(keys.map(k => caches.delete(k)))).then(() => {
+        location.reload(true);
+      });
+    });
+
     document.getElementById('sign-out').addEventListener('click', () => {
       if (window.Auth) {
         window.Auth.signOut();

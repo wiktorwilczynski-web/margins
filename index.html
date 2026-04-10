@@ -25,7 +25,7 @@
   <div id="app" style="display:none">
     <!-- Top bar -->
     <header id="top-bar">
-      <h1 class="app-title">books</h1>
+      <div class="app-title"></div>
       <button id="settings-btn" aria-label="Settings">
         <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
           <circle cx="12" cy="12" r="3"></circle>
@@ -132,6 +132,9 @@
             <button id="import-data" class="btn btn-sm">Import Backup</button>
           </div>
           <input type="file" id="import-file" accept=".json" class="hidden">
+        </div>
+        <div class="setting-group">
+          <button id="refresh-app" class="btn btn-sm">Refresh App</button>
         </div>
         <div class="setting-group">
           <button id="sign-out" class="btn btn-sm">Sign Out</button>
