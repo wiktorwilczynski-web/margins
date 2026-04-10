@@ -100,7 +100,7 @@ function showAuthScreen() {
   function renderForm() {
     if (isRegister) {
       container.innerHTML = `
-        <h1 class="auth-title">Margins</h1>
+        <h1 class="auth-title">books</h1>
         <p class="auth-subtitle">your reading memory</p>
         <div class="auth-fields">
           <input type="text" id="auth-username" class="auth-input" placeholder="choose a username" maxlength="30" autocomplete="username" autocapitalize="none" spellcheck="false">
@@ -111,7 +111,7 @@ function showAuthScreen() {
       `;
     } else {
       container.innerHTML = `
-        <h1 class="auth-title">Margins</h1>
+        <h1 class="auth-title">books</h1>
         <p class="auth-subtitle">your reading memory</p>
         <div class="auth-fields">
           <input type="text" id="auth-username" class="auth-input" placeholder="username" maxlength="30" autocomplete="username" autocapitalize="none" spellcheck="false">

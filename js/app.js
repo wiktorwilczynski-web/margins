@@ -23,7 +23,6 @@ const App = {
     this.bindSettings();
     this.bindAddBook();
     this.bindChatFab();
-    this.bindPullToRefresh();
     this.registerSW();
     this.renderTab('today');
     this.addToast();
@@ -1342,57 +1341,6 @@ Rules:
   },
 
   // ===== PULL TO REFRESH =====
-  bindPullToRefresh() {
-    const main = document.getElementById('main-content');
-    const THRESHOLD = 150;
-    let startY = 0;
-    let pulling = false;
-    let readyToRefresh = false;
-    let cooldown = false;
-
-    main.addEventListener('touchstart', (e) => {
-      if (cooldown) return;
-      if (main.scrollTop <= 0) {
-        startY = e.touches[0].clientY;
-        pulling = true;
-        readyToRefresh = false;
-      }
-    }, { passive: true });
-
-    main.addEventListener('touchmove', (e) => {
-      if (!pulling || cooldown || main.scrollTop > 0) {
-        pulling = false;
-        return;
-      }
-      const diff = e.touches[0].clientY - startY;
-      if (diff >= THRESHOLD) {
-        readyToRefresh = true;
-      } else {
-        readyToRefresh = false;
-      }
-    }, { passive: true });
-
-    main.addEventListener('touchend', () => {
-      if (readyToRefresh && !cooldown) {
-        cooldown = true;
-        this.handleRefresh();
-        // Block all pull-to-refresh for 3 seconds after triggering
-        setTimeout(() => { cooldown = false; }, 3000);
-      }
-      pulling = false;
-      readyToRefresh = false;
-    }, { passive: true });
-  },
-
-  handleRefresh() {
-    if (navigator.serviceWorker && navigator.serviceWorker.controller) {
-      navigator.serviceWorker.getRegistration().then(reg => {
-        if (reg) reg.update();
-      });
-    }
-    this.showToast('Refreshed');
-    this.renderTab(this.currentTab);
-  },
 
   // ===== SERVICE WORKER =====
   registerSW() {

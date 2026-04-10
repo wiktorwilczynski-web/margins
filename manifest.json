@@ -1,6 +1,6 @@
 {
-  "name": "Margins",
-  "short_name": "Margins",
+  "name": "books",
+  "short_name": "books",
   "description": "A personal reading memory app",
   "start_url": "/",
   "display": "standalone",
