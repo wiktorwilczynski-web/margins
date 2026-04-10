@@ -22,6 +22,7 @@ const App = {
     this.bindNavigation();
     this.bindSettings();
     this.bindAddBook();
+    this.bindChatFab();
     this.bindPullToRefresh();
     this.registerSW();
     this.renderTab('today');
@@ -45,14 +46,10 @@ const App = {
     main.innerHTML = '';
     main.scrollTop = 0;
 
-    // Remove FAB if exists
-    document.querySelector('.add-book-fab')?.remove();
-
     switch (tab) {
       case 'today': this.renderToday(main); break;
       case 'library': this.renderLibrary(main); break;
       case 'practice': this.renderPractice(main); break;
-      case 'ask': this.renderAsk(main); break;
     }
   },
 
@@ -230,10 +227,7 @@ const App = {
     const followup = document.getElementById('ask-followup');
     if (followup) {
       followup.addEventListener('click', () => {
-        this.chatContext = { type: 'lesson', id: followup.dataset.lessonId };
-        document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-        document.querySelector('[data-tab="ask"]').classList.add('active');
-        this.renderTab('ask');
+        this.openChatWithContext('lesson', followup.dataset.lessonId);
       });
     }
 
@@ -314,15 +308,23 @@ const App = {
 
     const data = Storage.getData();
 
+    // Library header with inline add button
+    let html = `
+      <div class="library-header fade-in">
+        <span class="library-count">${data.books.length} books</span>
+        <button class="library-add-btn" id="add-book-inline">+ Add book</button>
+      </div>
+    `;
+
     if (data.books.length === 0) {
-      main.innerHTML = `
-        <div class="empty-state fade-in">
+      html += `
+        <div class="empty-state">
           <h3>Your library is empty</h3>
-          <p>Start building your reading memory by adding your first book. Tap the + button below to get started.</p>
+          <p>Start building your reading memory by adding your first book.</p>
         </div>
       `;
     } else {
-      let html = '<div class="book-grid fade-in">';
+      html += '<div class="book-grid">';
       for (const book of data.books) {
         html += `
           <div class="book-card" data-book-id="${book.id}">
@@ -335,20 +337,16 @@ const App = {
         `;
       }
       html += '</div>';
-      main.innerHTML = html;
-
-      // Bind book card clicks
-      main.querySelectorAll('.book-card').forEach(card => {
-        card.addEventListener('click', () => this.openBookHub(card.dataset.bookId));
-      });
     }
 
-    // FAB
-    const fab = document.createElement('button');
-    fab.className = 'add-book-fab';
-    fab.innerHTML = '+';
-    fab.addEventListener('click', () => this.openAddBookModal());
-    document.getElementById('app').appendChild(fab);
+    main.innerHTML = html;
+
+    // Bind events
+    main.querySelectorAll('.book-card').forEach(card => {
+      card.addEventListener('click', () => this.openBookHub(card.dataset.bookId));
+    });
+
+    document.getElementById('add-book-inline')?.addEventListener('click', () => this.openAddBookModal());
   },
 
   openBookHub(bookId) {
@@ -714,71 +712,84 @@ const App = {
     modal.querySelector('.modal-overlay').onclick = () => modal.classList.add('hidden');
   },
 
-  // ===== ASK TAB =====
-  renderAsk(container) {
-    const main = container || document.getElementById('main-content');
-    main.innerHTML = '';
+  // ===== CHAT POPUP =====
+  bindChatFab() {
+    const fab = document.getElementById('chat-fab');
+    const modal = document.getElementById('chat-modal');
+    if (!fab || !modal) return;
+
+    fab.addEventListener('click', () => {
+      this.renderChatPopup();
+      modal.classList.remove('hidden');
+      setTimeout(() => {
+        const input = document.getElementById('chat-input');
+        if (input) input.focus();
+      }, 100);
+    });
+
+    modal.querySelector('.modal-close').addEventListener('click', () => modal.classList.add('hidden'));
+    modal.querySelector('.modal-overlay').addEventListener('click', () => modal.classList.add('hidden'));
+  },
+
+  renderChatPopup() {
+    const body = document.getElementById('chat-popup-body');
+    if (!body) return;
 
     const data = Storage.getData();
-    const apiKey = data.settings.geminiApiKey;
+    const hasKey = (data.settings.geminiApiKey || data.settings.groqApiKey);
 
-    if (!apiKey) {
-      main.innerHTML = `
-        <div class="api-key-notice fade-in">
-          <p>Add your Gemini API key in Settings to use chat.</p>
-          <button class="btn btn-primary" id="go-to-settings" style="width:auto">Open Settings</button>
+    if (!hasKey) {
+      body.innerHTML = `
+        <div class="chat-empty">
+          <div>
+            <p>Add an API key in Settings to use chat.</p>
+            <button class="btn btn-primary" id="chat-go-settings" style="width:auto;margin-top:12px">Open Settings</button>
+          </div>
         </div>
       `;
-      document.getElementById('go-to-settings').addEventListener('click', () => {
+      document.getElementById('chat-go-settings').addEventListener('click', () => {
+        document.getElementById('chat-modal').classList.add('hidden');
         document.getElementById('settings-modal').classList.remove('hidden');
       });
       return;
     }
 
     // Build context selector
-    let contextOptions = '<option value="">None</option>';
+    let contextOptions = '<option value="">No context</option>';
     for (const book of data.books) {
       contextOptions += `<option value="book:${book.id}" ${this.chatContext?.type === 'book' && this.chatContext?.id === book.id ? 'selected' : ''}>${book.title}</option>`;
-      for (const lesson of book.lessons) {
-        contextOptions += `<option value="lesson:${lesson.id}" ${this.chatContext?.type === 'lesson' && this.chatContext?.id === lesson.id ? 'selected' : ''}>&nbsp;&nbsp;\u2022 ${lesson.title}</option>`;
-      }
     }
 
-    let html = `
-      <div class="ask-context">
-        <label for="chat-context">Context</label>
+    let messagesHtml = '';
+    if (this.chatMessages.length === 0) {
+      messagesHtml = '<div class="chat-empty">Ask anything about your books and lessons.</div>';
+    } else {
+      messagesHtml = this.chatMessages.map(msg =>
+        `<div class="chat-msg ${msg.role}">${msg.content}</div>`
+      ).join('');
+    }
+
+    body.innerHTML = `
+      <div class="chat-context-bar">
         <select id="chat-context">${contextOptions}</select>
       </div>
-      <div class="chat-messages" id="chat-messages">
-    `;
-
-    if (this.chatMessages.length === 0) {
-      html += `<div class="empty-state"><p>Ask anything about your books and lessons.</p></div>`;
-    } else {
-      for (const msg of this.chatMessages) {
-        html += `<div class="chat-msg ${msg.role}">${msg.content}</div>`;
-      }
-    }
-
-    html += `
-      </div>
-      <div class="chat-input-row">
+      <div class="chat-messages-container" id="chat-messages">${messagesHtml}</div>
+      <div class="chat-clear"><a id="clear-chat">Clear chat</a></div>
+      <div class="chat-input-bar">
         <input type="text" id="chat-input" placeholder="Ask about your reading...">
-        <button class="btn btn-primary" id="chat-send" style="width:auto">Send</button>
-      </div>
-      <div class="clear-chat-btn">
-        <a id="clear-chat">Clear chat</a>
+        <button class="btn btn-primary" id="chat-send">Send</button>
       </div>
     `;
 
-    main.innerHTML = html;
+    // Scroll to bottom
+    const container = document.getElementById('chat-messages');
+    container.scrollTop = container.scrollHeight;
 
     // Context change
     document.getElementById('chat-context').addEventListener('change', (e) => {
       const val = e.target.value;
-      if (!val) {
-        this.chatContext = null;
-      } else {
+      if (!val) { this.chatContext = null; }
+      else {
         const [type, id] = val.split(':');
         this.chatContext = { type, id };
       }
@@ -794,7 +805,6 @@ const App = {
       this.chatMessages.push({ role: 'user', content: text });
       this.renderChatMessages();
 
-      // Show typing indicator
       const messagesDiv = document.getElementById('chat-messages');
       const typingEl = document.createElement('div');
       typingEl.className = 'chat-msg assistant typing';
@@ -803,33 +813,32 @@ const App = {
       messagesDiv.scrollTop = messagesDiv.scrollHeight;
 
       try {
-        // Build system prompt from context
         let systemPrompt = '';
         const freshData = Storage.getData();
 
         if (this.chatContext) {
           if (this.chatContext.type === 'book') {
             const book = freshData.books.find(b => b.id === this.chatContext.id);
-            if (book) systemPrompt = Gemini.buildSystemPrompt(book, book.lessons, book.quotes);
+            if (book) systemPrompt = LLM.buildSystemPrompt(book, book.lessons, book.quotes);
           } else if (this.chatContext.type === 'lesson') {
             for (const book of freshData.books) {
               const lesson = book.lessons.find(l => l.id === this.chatContext.id);
               if (lesson) {
-                systemPrompt = Gemini.buildSystemPrompt(book, [lesson], book.quotes);
+                systemPrompt = LLM.buildSystemPrompt(book, [lesson], book.quotes);
                 break;
               }
             }
           }
         }
 
-        const response = await Gemini.chat(this.chatMessages, freshData.settings.geminiApiKey, systemPrompt);
+        const response = await LLM.chat(this.chatMessages, freshData.settings, systemPrompt);
         typingEl.remove();
         this.chatMessages.push({ role: 'assistant', content: response });
         this.renderChatMessages();
       } catch (err) {
         typingEl.remove();
-        if (err.message === 'RATE_LIMIT') {
-          this.chatMessages.push({ role: 'assistant', content: 'Free tier limit reached for today \u2014 try tomorrow.' });
+        if (err.message === 'ALL_PROVIDERS_EXHAUSTED') {
+          this.chatMessages.push({ role: 'assistant', content: 'All providers are rate-limited. Try again later, or add another API key in Settings.' });
         } else {
           this.chatMessages.push({ role: 'assistant', content: `Error: ${err.message}` });
         }
@@ -844,7 +853,7 @@ const App = {
 
     document.getElementById('clear-chat').addEventListener('click', () => {
       this.chatMessages = [];
-      this.renderAsk();
+      this.renderChatPopup();
     });
   },
 
@@ -853,13 +862,19 @@ const App = {
     if (!div) return;
 
     if (this.chatMessages.length === 0) {
-      div.innerHTML = '<div class="empty-state"><p>Ask anything about your books and lessons.</p></div>';
+      div.innerHTML = '<div class="chat-empty">Ask anything about your books and lessons.</div>';
     } else {
       div.innerHTML = this.chatMessages.map(msg =>
         `<div class="chat-msg ${msg.role}">${msg.content}</div>`
       ).join('');
     }
     div.scrollTop = div.scrollHeight;
+  },
+
+  openChatWithContext(type, id) {
+    this.chatContext = { type, id };
+    this.renderChatPopup();
+    document.getElementById('chat-modal').classList.remove('hidden');
   },
 
   // ===== SETTINGS =====
@@ -870,6 +885,7 @@ const App = {
     openBtn.addEventListener('click', () => {
       const data = Storage.getData();
       document.getElementById('gemini-key').value = data.settings.geminiApiKey || '';
+      document.getElementById('groq-key').value = data.settings.groqApiKey || '';
       document.getElementById('reminder-time').value = data.settings.reminderTime || '20:00';
 
       // Theme buttons
@@ -891,6 +907,16 @@ const App = {
     // Toggle key visibility
     document.getElementById('toggle-key-vis').addEventListener('click', () => {
       const input = document.getElementById('gemini-key');
+      input.type = input.type === 'password' ? 'text' : 'password';
+    });
+
+    // Groq key
+    document.getElementById('groq-key').addEventListener('change', (e) => {
+      Storage.updateData(d => { d.settings.groqApiKey = e.target.value; });
+    });
+
+    document.getElementById('toggle-groq-vis').addEventListener('click', () => {
+      const input = document.getElementById('groq-key');
       input.type = input.type === 'password' ? 'text' : 'password';
     });
 
@@ -968,12 +994,12 @@ const App = {
   applyTheme() {
     const data = Storage.getData();
     const theme = data.settings.theme || 'cream';
-    if (theme === 'sepia-dark') {
-      document.documentElement.setAttribute('data-theme', 'sepia-dark');
-      document.querySelector('meta[name="theme-color"]').content = '#1E1A14';
+    if (theme === 'dark') {
+      document.documentElement.setAttribute('data-theme', 'dark');
+      document.querySelector('meta[name="theme-color"]').content = '#0F0F0F';
     } else {
       document.documentElement.removeAttribute('data-theme');
-      document.querySelector('meta[name="theme-color"]').content = '#FAF6EE';
+      document.querySelector('meta[name="theme-color"]').content = '#FAFAFA';
     }
   },
 

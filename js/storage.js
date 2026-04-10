@@ -11,6 +11,7 @@ const Storage = {
       weeklyReflections: [],
       settings: {
         geminiApiKey: '',
+        groqApiKey: '',
         reminderTime: '20:00',
         theme: 'cream'
       }
