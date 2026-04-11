@@ -78,8 +78,7 @@ const Storage = {
         try {
           const data = JSON.parse(e.target.result);
           if (data.books && data.streak && data.settings) {
-            // Auto-backup before import
-            this.createBackup('pre-import');
+            this.snapshotBeforeImport();
             this.save(data);
             resolve(data);
           } else {
@@ -93,59 +92,23 @@ const Storage = {
     });
   },
 
-  // ===== AUTO-BACKUP SYSTEM =====
-  createBackup(label) {
+  // Single rolling backup — overwrites each time, only before destructive ops
+  snapshotBeforeImport() {
     try {
       const data = this.load();
       if (!data) return;
-      const key = `margins_backup_${label}_${new Date().toISOString().slice(0, 19).replace(/:/g, '-')}`;
-      localStorage.setItem(key, JSON.stringify(data));
-      // Keep only last 3 backups per label
-      this.pruneBackups(label, 3);
+      localStorage.setItem('margins_pre_import_backup', JSON.stringify(data));
     } catch (e) {
-      console.warn('Backup failed:', e.message);
+      console.warn('Snapshot failed:', e.message);
     }
   },
 
-  pruneBackups(label, keep) {
-    const prefix = `margins_backup_${label}_`;
-    const keys = [];
-    for (let i = 0; i < localStorage.length; i++) {
-      const k = localStorage.key(i);
-      if (k && k.startsWith(prefix)) keys.push(k);
-    }
-    keys.sort();
-    while (keys.length > keep) {
-      localStorage.removeItem(keys.shift());
-    }
-  },
-
-  dailyBackup() {
-    const lastBackup = localStorage.getItem('margins_last_daily_backup');
-    const today = new Date().toISOString().slice(0, 10);
-    if (lastBackup === today) return;
-    this.createBackup('daily');
-    localStorage.setItem('margins_last_daily_backup', today);
-  },
-
-  listBackups() {
-    const backups = [];
-    for (let i = 0; i < localStorage.length; i++) {
-      const k = localStorage.key(i);
-      if (k && k.startsWith('margins_backup_')) {
-        backups.push(k);
-      }
-    }
-    return backups.sort().reverse();
-  },
-
-  restoreBackup(key) {
+  restoreFromSnapshot() {
     try {
-      const raw = localStorage.getItem(key);
+      const raw = localStorage.getItem('margins_pre_import_backup');
       if (!raw) return false;
       const data = JSON.parse(raw);
       if (data.books && data.settings) {
-        this.createBackup('pre-restore');
         this.save(data);
         return true;
       }

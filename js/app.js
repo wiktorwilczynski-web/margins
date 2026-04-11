@@ -26,9 +26,6 @@ const App = {
     this.renderTab('today');
     this.addToast();
 
-    // Auto-backup once per day
-    Storage.dailyBackup();
-
     // One-time cover refresh to ensure English editions
     const coverVer = localStorage.getItem('covers_version');
     if (coverVer !== '4') {
