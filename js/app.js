@@ -565,46 +565,146 @@ Use **bold** for key terms. Be concise and sharp. No padding or pleasantries.`;
     main.innerHTML = '';
 
     const data = Storage.getData();
+    let view = 'books';
+    let selectedTag = null;
 
-    // Library header with inline add button
-    let html = `
-      <div class="library-header fade-in">
-        <span class="library-count">${data.books.length} books</span>
-        <button class="library-add-btn" id="add-book-inline">+ Add book</button>
+    const render = () => {
+      // Build tag map across all unlocked lessons
+      const allLessons = this.getAllUnlockedLessons(data);
+      const tagMap = {};
+      for (const lesson of allLessons) {
+        for (const tag of (lesson.tags || [])) {
+          if (!tagMap[tag]) tagMap[tag] = [];
+          tagMap[tag].push(lesson);
+        }
+      }
+      const tags = Object.keys(tagMap).sort();
+      const hasTags = tags.length > 0;
+
+      let html = `
+        <div class="library-header fade-in">
+          <span class="library-count">${data.books.length} book${data.books.length !== 1 ? 's' : ''}</span>
+          <button class="library-add-btn" id="add-book-inline">+ Add book</button>
+        </div>
+        ${hasTags ? `
+          <div class="library-tabs">
+            <button class="lib-tab ${view === 'books' ? 'active' : ''}" data-view="books">Books</button>
+            <button class="lib-tab ${view === 'topics' ? 'active' : ''}" data-view="topics">Topics</button>
+          </div>
+        ` : ''}
+      `;
+
+      if (view === 'books') {
+        if (data.books.length === 0) {
+          html += `<div class="empty-state"><h3>Your library is empty</h3><p>Start building your reading memory by adding your first book.</p></div>`;
+        } else {
+          html += '<div class="book-grid">';
+          for (const book of data.books) {
+            html += `
+              <div class="book-card" data-book-id="${book.id}">
+                ${Covers.renderCover(book, 'card')}
+                <div class="book-card-info">
+                  <div class="book-title">${book.title}</div>
+                  <div class="book-author">${book.author}</div>
+                </div>
+              </div>
+            `;
+          }
+          html += '</div>';
+        }
+      } else {
+        // Topics view
+        html += `<div class="topic-pills">`;
+        for (const tag of tags) {
+          const active = tag === selectedTag;
+          html += `<button class="topic-pill ${active ? 'active' : ''}" data-tag="${tag}">${this.capitalizeTag(tag)}<span class="topic-pill-count">${tagMap[tag].length}</span></button>`;
+        }
+        html += `</div>`;
+
+        if (selectedTag && tagMap[selectedTag]) {
+          html += `<div class="topic-lessons-list">`;
+          for (const lesson of tagMap[selectedTag]) {
+            const book = data.books.find(b => b.lessons.some(l => l.id === lesson.id));
+            html += this.renderTopicLessonCard(lesson, book);
+          }
+          html += `</div>`;
+        } else {
+          html += `<div class="topic-empty-hint">Tap a topic to browse lessons</div>`;
+        }
+      }
+
+      main.innerHTML = html;
+
+      // Tab toggle
+      main.querySelectorAll('.lib-tab').forEach(btn => {
+        btn.addEventListener('click', () => {
+          view = btn.dataset.view;
+          selectedTag = null;
+          render();
+        });
+      });
+
+      // Book cards
+      main.querySelectorAll('.book-card').forEach(card => {
+        card.addEventListener('click', () => this.openBookHub(card.dataset.bookId));
+      });
+
+      // Add book
+      document.getElementById('add-book-inline')?.addEventListener('click', () => this.openAddBookModal());
+
+      // Topic pills
+      main.querySelectorAll('.topic-pill').forEach(pill => {
+        pill.addEventListener('click', () => {
+          selectedTag = pill.dataset.tag === selectedTag ? null : pill.dataset.tag;
+          render();
+        });
+      });
+
+      // Learn more in topic lessons
+      main.querySelectorAll('.learn-more-btn').forEach(btn => {
+        btn.addEventListener('click', () => this.handleLearnMore(btn.dataset.lessonId, btn.dataset.bookId));
+      });
+
+      // AI follow up in topic lessons
+      main.querySelectorAll('.ask-followup').forEach(btn => {
+        btn.addEventListener('click', () => this.openChatWithContext('lesson', btn.dataset.lessonId));
+      });
+
+      // Explore book in topic lessons
+      main.querySelectorAll('.explore-book').forEach(btn => {
+        btn.addEventListener('click', () => this.openBookHub(btn.dataset.bookId));
+      });
+    };
+
+    render();
+  },
+
+  capitalizeTag(tag) {
+    return tag.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+  },
+
+  renderTopicLessonCard(lesson, book) {
+    return `
+      <div class="topic-lesson-card">
+        <div class="lesson-card-header">
+          <div class="dash-lesson-title">${lesson.title}</div>
+          ${book && book.coverUrl ? `<img class="lesson-cover-thumb" src="${book.coverUrl}" alt="">` : ''}
+        </div>
+        <div class="dash-lesson-body">${this.formatLessonBody(lesson.body)}</div>
+        <div class="dash-lesson-source">${book ? `<em>${book.title}</em> · ${book.author}` : ''}</div>
+        <div class="followup-prompt" style="margin-top:14px;padding-top:0">
+          <div class="followup-row">
+            <button class="followup-btn learn-more-btn" data-lesson-id="${lesson.id}" data-book-id="${book?.id}">Learn more</button>
+            <button class="followup-btn ask-followup" data-lesson-id="${lesson.id}">
+              <span class="ai-pill-badge">AI</span>
+              Follow up
+            </button>
+          </div>
+          <div class="learn-more-section hidden" id="learn-more-${lesson.id}"></div>
+          ${book ? `<button class="followup-btn explore-book wide-followup" data-book-id="${book.id}">Explore the book</button>` : ''}
+        </div>
       </div>
     `;
-
-    if (data.books.length === 0) {
-      html += `
-        <div class="empty-state">
-          <h3>Your library is empty</h3>
-          <p>Start building your reading memory by adding your first book.</p>
-        </div>
-      `;
-    } else {
-      html += '<div class="book-grid">';
-      for (const book of data.books) {
-        html += `
-          <div class="book-card" data-book-id="${book.id}">
-            ${Covers.renderCover(book, 'card')}
-            <div class="book-card-info">
-              <div class="book-title">${book.title}</div>
-              <div class="book-author">${book.author}</div>
-            </div>
-          </div>
-        `;
-      }
-      html += '</div>';
-    }
-
-    main.innerHTML = html;
-
-    // Bind events
-    main.querySelectorAll('.book-card').forEach(card => {
-      card.addEventListener('click', () => this.openBookHub(card.dataset.bookId));
-    });
-
-    document.getElementById('add-book-inline')?.addEventListener('click', () => this.openAddBookModal());
   },
 
   openBookHub(bookId) {
@@ -677,11 +777,28 @@ Use **bold** for key terms. Be concise and sharp. No padding or pleasantries.`;
 
           const renderLesson = (lesson) => {
             const isLocked = !freshBook.completed && lesson.page && freshBook.currentPage && lesson.page > freshBook.currentPage;
+            if (isLocked) {
+              return `
+                <div class="hub-lesson-item locked">
+                  <div class="lesson-lock">page ${lesson.page}</div>
+                  <div class="hub-lesson-title-locked">${lesson.title}</div>
+                </div>
+              `;
+            }
             return `
-              <div class="hub-lesson-item ${isLocked ? 'locked' : ''}">
-                ${isLocked ? `<div class="lesson-lock">page ${lesson.page}</div>` : ''}
-                <h4>${lesson.title}</h4>
-                <p>${lesson.body}</p>
+              <div class="hub-lesson-card">
+                <div class="hub-lesson-title">${lesson.title}</div>
+                <div class="hub-lesson-body">${this.formatLessonBody(lesson.body)}</div>
+                <div class="followup-prompt" style="margin-top:14px;padding-top:0">
+                  <div class="followup-row">
+                    <button class="followup-btn learn-more-btn" data-lesson-id="${lesson.id}" data-book-id="${bookId}">Learn more</button>
+                    <button class="followup-btn ask-followup" data-lesson-id="${lesson.id}">
+                      <span class="ai-pill-badge">AI</span>
+                      Follow up
+                    </button>
+                  </div>
+                  <div class="learn-more-section hidden" id="learn-more-${lesson.id}"></div>
+                </div>
               </div>
             `;
           };
@@ -731,6 +848,14 @@ Use **bold** for key terms. Be concise and sharp. No padding or pleasantries.`;
       }
 
       content.innerHTML = html;
+
+      // Bind hub lesson learn-more and follow-up
+      content.querySelectorAll('.learn-more-btn').forEach(btn => {
+        btn.addEventListener('click', () => this.handleLearnMore(btn.dataset.lessonId, btn.dataset.bookId));
+      });
+      content.querySelectorAll('.ask-followup').forEach(btn => {
+        btn.addEventListener('click', () => this.openChatWithContext('lesson', btn.dataset.lessonId));
+      });
 
       // Bind quote toggles
       content.querySelectorAll('.hub-quote-toggle').forEach(btn => {

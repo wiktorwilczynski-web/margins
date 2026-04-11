@@ -2257,6 +2257,138 @@ label {
   opacity: 1;
 }
 
+/* ===== Library Tabs ===== */
+.library-tabs {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 16px;
+}
+
+.lib-tab {
+  flex: 1;
+  padding: 9px 14px;
+  border: 1.5px solid var(--border);
+  border-radius: 20px;
+  background: transparent;
+  color: var(--text-secondary);
+  font-family: var(--sans);
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: border-color 0.15s, color 0.15s, background 0.15s;
+}
+
+.lib-tab.active {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: rgba(99, 102, 241, 0.07);
+  font-weight: 600;
+}
+
+/* ===== Topic Pills ===== */
+.topic-pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 18px;
+}
+
+.topic-pill {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 13px;
+  border: 1.5px solid var(--border);
+  border-radius: 20px;
+  background: var(--bg-card);
+  color: var(--text);
+  font-family: var(--sans);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: border-color 0.15s, color 0.15s, background 0.15s;
+}
+
+.topic-pill.active {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: rgba(99, 102, 241, 0.08);
+  font-weight: 600;
+}
+
+.topic-pill-count {
+  background: var(--bg-card-alt);
+  border-radius: 10px;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text-muted);
+  padding: 1px 6px;
+  line-height: 1.5;
+}
+
+.topic-pill.active .topic-pill-count {
+  background: rgba(99, 102, 241, 0.15);
+  color: var(--accent);
+}
+
+/* ===== Topic Lessons List ===== */
+.topic-lessons-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.topic-lesson-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 18px 18px 14px;
+  display: flex;
+  flex-direction: column;
+}
+
+.topic-empty-hint {
+  text-align: center;
+  color: var(--text-muted);
+  font-size: 14px;
+  padding: 32px 20px;
+}
+
+/* ===== Hub Lesson Cards ===== */
+.hub-lesson-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 18px 18px 14px;
+  margin-bottom: 12px;
+  display: flex;
+  flex-direction: column;
+}
+
+.hub-lesson-title {
+  font-family: var(--sans);
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text);
+  margin-bottom: 10px;
+  line-height: 1.4;
+}
+
+.hub-lesson-body {
+  font-family: var(--sans);
+  font-size: 14px;
+  line-height: 1.65;
+  color: var(--text-secondary);
+  margin-bottom: 0;
+}
+
+.hub-lesson-title-locked {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text-muted);
+  font-style: italic;
+}
+
 /* ===== Utilities ===== */
 .hidden {
   display: none !important;

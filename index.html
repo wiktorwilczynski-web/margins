@@ -18,11 +18,11 @@
   <script>
     // Cache buster: force reload when new version is deployed
     (function() {
-      var v = 35;
+      var v = 36;
       var stored = localStorage.getItem('margins_app_version');
       if (stored && parseInt(stored) >= v) return;
       // New version — nuke all caches and reload
-      localStorage.setItem('margins_app_version', v);
+      localStorage.setItem('margins_app_version', String(v));
       if ('caches' in window) {
         caches.keys().then(function(keys) {
           return Promise.all(keys.map(function(k) { return caches.delete(k); }));
