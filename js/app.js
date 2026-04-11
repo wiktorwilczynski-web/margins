@@ -873,13 +873,14 @@ Use **bold** for key terms. Be concise and sharp. No padding or pleasantries.`;
         }
       } else {
         // Normal view
-        html += hasTags ? `
-          <div class="library-tabs">
-            <button class="lib-tab ${view === 'books' ? 'active' : ''}" data-view="books">Books</button>
-            <button class="lib-tab ${view === 'topics' ? 'active' : ''}" data-view="topics">Topics</button>
-          </div>
-        ` : ''}
-      `;
+        if (hasTags) {
+          html += `
+            <div class="library-tabs">
+              <button class="lib-tab ${view === 'books' ? 'active' : ''}" data-view="books">Books</button>
+              <button class="lib-tab ${view === 'topics' ? 'active' : ''}" data-view="topics">Topics</button>
+            </div>
+          `;
+        }
 
       if (view === 'books') {
         if (data.books.length === 0) {
