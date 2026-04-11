@@ -195,6 +195,7 @@ const App = {
                     <span class="ai-pill-badge">AI</span>
                     Follow up
                   </button>
+                  <button class="followup-btn fav-btn ${this.isFavorite(lesson.id) ? 'is-fav' : ''}" data-lesson-id="${lesson.id}" aria-label="Save">${this.isFavorite(lesson.id) ? '♥' : '♡'}</button>
                 </div>
                 <div class="learn-more-section hidden" id="learn-more-${lesson.id}"></div>
                 ${book ? `<button class="followup-btn explore-book wide-followup" data-book-id="${book.id}">Explore the book</button>` : ''}
@@ -235,10 +236,35 @@ const App = {
     } else {
       html += `
         <div class="empty-state">
-          <h3>Your reading journey starts here</h3>
-          <p>Add your first book in the Library tab to begin building your reading memory.</p>
+          <h3>A blank page, full of possibility</h3>
+          <p>Head to the Library tab and add your first book. Every great reader started somewhere.</p>
         </div>
       `;
+    }
+
+    // --- Saved lessons compact ---
+    const favIds = data.favorites || [];
+    if (favIds.length > 0) {
+      const favLessons = [];
+      for (const fid of favIds) {
+        for (const book of data.books) {
+          const l = book.lessons.find(x => x.id === fid);
+          if (l) { favLessons.push({ lesson: l, book }); break; }
+        }
+      }
+      if (favLessons.length > 0) {
+        html += `<div class="dash-section-label">Saved</div>`;
+        html += `<div class="saved-list">`;
+        for (const { lesson, book } of favLessons.slice(0, 5)) {
+          html += `
+            <div class="saved-item" data-book-id="${book.id}">
+              <div class="saved-item-title">${lesson.title}</div>
+              <div class="saved-item-source">${book.title}</div>
+            </div>
+          `;
+        }
+        html += `</div>`;
+      }
     }
 
     // --- Weekly reflection (Sundays) ---
@@ -293,6 +319,20 @@ const App = {
       btn.addEventListener('click', () => {
         this.handleLearnMore(btn.dataset.lessonId, btn.dataset.bookId);
       });
+    });
+
+    // Favorite button
+    main.querySelectorAll('.fav-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        this.toggleFavorite(btn.dataset.lessonId);
+        btn.classList.toggle('is-fav');
+        btn.textContent = btn.classList.contains('is-fav') ? '♥' : '♡';
+      });
+    });
+
+    // Saved items → open book hub
+    main.querySelectorAll('.saved-item').forEach(item => {
+      item.addEventListener('click', () => this.openBookHub(item.dataset.bookId));
     });
 
     // Quote expand
@@ -547,6 +587,7 @@ Use **bold** for key terms. Be concise and sharp. No padding or pleasantries.`;
     const data = Storage.getData();
     let view = 'books';
     let selectedTag = null;
+    let searchQuery = '';
 
     const render = () => {
       // Build tag map across all unlocked lessons
@@ -561,12 +602,59 @@ Use **bold** for key terms. Be concise and sharp. No padding or pleasantries.`;
       const tags = Object.keys(tagMap).sort();
       const hasTags = tags.length > 0;
 
+      // Search filtering
+      const q = searchQuery.toLowerCase().trim();
+      const matchingBooks = q ? data.books.filter(b =>
+        b.title.toLowerCase().includes(q) || b.author.toLowerCase().includes(q)
+      ) : data.books;
+      const matchingLessons = q ? allLessons.filter(l =>
+        l.title.toLowerCase().includes(q) || l.body.toLowerCase().includes(q)
+      ) : [];
+
       let html = `
         <div class="library-header fade-in">
           <span class="library-count">${data.books.length} book${data.books.length !== 1 ? 's' : ''}</span>
           <button class="library-add-btn" id="add-book-inline">+ Add book</button>
         </div>
-        ${hasTags ? `
+        <div class="library-search">
+          <svg class="library-search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+          <input type="search" id="library-search-input" placeholder="Search books and lessons..." value="${searchQuery}">
+        </div>
+      `;
+
+      // If searching, show search results
+      if (q) {
+        html += `<div class="dash-section-label" style="margin-top:0">Results</div>`;
+        if (matchingBooks.length === 0 && matchingLessons.length === 0) {
+          html += `<div class="topic-empty-hint">Nothing found for "${searchQuery}"</div>`;
+        }
+        if (matchingBooks.length > 0) {
+          html += '<div class="book-grid">';
+          for (const book of matchingBooks) {
+            html += `
+              <div class="book-card" data-book-id="${book.id}">
+                ${Covers.renderCover(book, 'card')}
+                <div class="book-card-info">
+                  <div class="book-title">${book.title}</div>
+                  <div class="book-author">${book.author}</div>
+                </div>
+              </div>
+            `;
+          }
+          html += '</div>';
+        }
+        if (matchingLessons.length > 0) {
+          if (matchingBooks.length > 0) html += `<div class="dash-section-label">Lessons</div>`;
+          html += `<div class="topic-lessons-list">`;
+          for (const lesson of matchingLessons.slice(0, 10)) {
+            const book = data.books.find(b => b.lessons.some(l => l.id === lesson.id));
+            html += this.renderTopicLessonCard(lesson, book);
+          }
+          html += `</div>`;
+        }
+      } else {
+        // Normal view
+        html += hasTags ? `
           <div class="library-tabs">
             <button class="lib-tab ${view === 'books' ? 'active' : ''}" data-view="books">Books</button>
             <button class="lib-tab ${view === 'topics' ? 'active' : ''}" data-view="topics">Topics</button>
@@ -576,7 +664,7 @@ Use **bold** for key terms. Be concise and sharp. No padding or pleasantries.`;
 
       if (view === 'books') {
         if (data.books.length === 0) {
-          html += `<div class="empty-state"><h3>Your library is empty</h3><p>Start building your reading memory by adding your first book.</p></div>`;
+          html += `<div class="empty-state"><h3>Nothing on the shelf yet</h3><p>Tap "+ Add book" above to bring in your first read. We'll remember the good parts for you.</p></div>`;
         } else {
           html += '<div class="book-grid">';
           for (const book of data.books) {
@@ -612,8 +700,21 @@ Use **bold** for key terms. Be concise and sharp. No padding or pleasantries.`;
           html += `<div class="topic-empty-hint">Tap a topic to browse lessons</div>`;
         }
       }
+      } // close search else
 
       main.innerHTML = html;
+
+      // Search input
+      const searchInput = document.getElementById('library-search-input');
+      if (searchInput) {
+        searchInput.addEventListener('input', (e) => {
+          searchQuery = e.target.value;
+          render();
+          // Re-focus and set cursor
+          const el = document.getElementById('library-search-input');
+          if (el) { el.focus(); el.setSelectionRange(el.value.length, el.value.length); }
+        });
+      }
 
       // Tab toggle
       main.querySelectorAll('.lib-tab').forEach(btn => {
@@ -737,8 +838,8 @@ Use **bold** for key terms. Be concise and sharp. No padding or pleasantries.`;
         if (freshBook.lessons.length === 0) {
           html += `
             <div class="empty-state">
-              <h3>No lessons yet</h3>
-              <p>Use the "Add Book" flow to generate lessons with Claude, then paste them here.</p>
+              <h3>Lessons live here</h3>
+              <p>Use the "Add Book" flow to generate lessons with Claude, then paste them. Each one becomes a seed for your memory.</p>
             </div>
           `;
         } else {
@@ -809,8 +910,8 @@ Use **bold** for key terms. Be concise and sharp. No padding or pleasantries.`;
         if (freshBook.quotes.length === 0) {
           html += `
             <div class="empty-state">
-              <h3>No quotes yet</h3>
-              <p>Add quotes using the Quick Add option.</p>
+              <h3>Quiet for now</h3>
+              <p>Save the lines that stop you mid-page. Use the Quick Add option to start collecting.</p>
             </div>
           `;
         } else {
@@ -1429,10 +1530,10 @@ Use **bold** for key terms. Be concise and sharp. No padding or pleasantries.`;
     const theme = data.settings.theme || 'dark';
     if (theme === 'dark') {
       document.documentElement.setAttribute('data-theme', 'dark');
-      document.querySelector('meta[name="theme-color"]').content = '#0F0F0F';
+      document.querySelector('meta[name="theme-color"]').content = '#0D0D0D';
     } else {
       document.documentElement.removeAttribute('data-theme');
-      document.querySelector('meta[name="theme-color"]').content = '#FAFAFA';
+      document.querySelector('meta[name="theme-color"]').content = '#F5F4F0';
     }
   },
 
@@ -1617,6 +1718,26 @@ Rules:
     this.pushNav();
   },
 
+  // ===== FAVORITES =====
+  isFavorite(lessonId) {
+    const data = Storage.getData();
+    return (data.favorites || []).includes(lessonId);
+  },
+
+  toggleFavorite(lessonId) {
+    Storage.updateData(d => {
+      if (!d.favorites) d.favorites = [];
+      const idx = d.favorites.indexOf(lessonId);
+      if (idx >= 0) {
+        d.favorites.splice(idx, 1);
+        this.showToast('Removed from saved');
+      } else {
+        d.favorites.push(lessonId);
+        this.showToast('Saved');
+      }
+    });
+  },
+
   // ===== HELPERS =====
   getAllUnlockedLessons(data) {
     const lessons = [];
@@ -1677,15 +1798,15 @@ Rules:
     if (allLessons.length < 4) {
       return `
         <div class="empty-state">
-          <h3>Need more lessons</h3>
-          <p>Add at least 4 lessons across your books to start the quiz.</p>
+          <h3>Almost ready to play</h3>
+          <p>You need at least 4 lessons across your books before the quiz can challenge you. Keep reading.</p>
         </div>
       `;
     }
 
     if (!this.quizSession) {
       const questions = this.buildQuizQuestions(data, allLessons);
-      if (!questions) return `<div class="empty-state"><h3>Not enough data</h3></div>`;
+      if (!questions) return `<div class="empty-state"><h3>Not quite enough to work with</h3><p>Add a few more lessons and we'll build a quiz from your reading.</p></div>`;
       this.quizSession = { questions, current: 0, score: 0, finished: false };
     }
 

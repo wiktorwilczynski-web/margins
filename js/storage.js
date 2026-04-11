@@ -9,6 +9,7 @@ const Storage = {
       streak: { current: 0, longest: 0, lastCheckIn: null },
       connections: [],
       weeklyReflections: [],
+      favorites: [],
       settings: {
         geminiApiKey: '',
         groqApiKey: '',
