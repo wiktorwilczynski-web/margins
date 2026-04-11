@@ -28,7 +28,7 @@
   --success-soft: rgba(22, 163, 74, 0.08);
 
   /* Typography */
-  --font-display: 'Instrument Serif', 'Georgia', serif;
+  --font-display: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
   --font-body: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
   --font-mono: 'JetBrains Mono', 'Fira Code', monospace;
 
@@ -139,12 +139,12 @@ body {
 }
 
 .app-title {
-  font-family: var(--font-display);
-  font-size: 20px;
-  font-weight: 400;
-  font-style: italic;
+  font-family: var(--font-body);
+  font-size: 18px;
+  font-weight: 700;
+  font-style: normal;
   color: var(--text);
-  letter-spacing: 0.2px;
+  letter-spacing: -0.5px;
 }
 
 #settings-btn {
@@ -616,7 +616,7 @@ label {
   font-family: var(--font-display);
   font-size: 42px;
   font-weight: 400;
-  font-style: italic;
+  font-style: normal;
   color: var(--text);
   margin-bottom: 4px;
   letter-spacing: 0.5px;
@@ -719,7 +719,7 @@ label {
   font-family: var(--font-display);
   font-size: 26px;
   font-weight: 400;
-  font-style: italic;
+  font-style: normal;
   line-height: 1.3;
   margin-bottom: var(--space-3);
   color: var(--text);
@@ -752,14 +752,14 @@ label {
 }
 
 .home-hero-title {
-  font-family: var(--font-display);
-  font-size: 34px;
-  font-weight: 400;
-  font-style: italic;
+  font-family: var(--font-body);
+  font-size: 30px;
+  font-weight: 700;
+  font-style: normal;
   line-height: 1.15;
   color: var(--text);
   margin-bottom: var(--space-4);
-  letter-spacing: -0.5px;
+  letter-spacing: -1px;
   animation: heroIn 0.7s var(--ease-out) 0.05s both;
 }
 
@@ -916,7 +916,7 @@ label {
 .home-mini-title {
   font-family: var(--font-display);
   font-size: 16px;
-  font-style: italic;
+  font-style: normal;
   line-height: 1.25;
   color: var(--text);
 }
@@ -1000,7 +1000,7 @@ label {
 .home-saved-title {
   font-family: var(--font-display);
   font-size: 15px;
-  font-style: italic;
+  font-style: normal;
   color: var(--text);
   line-height: 1.3;
 }
@@ -1046,7 +1046,7 @@ label {
   font-family: var(--font-display);
   font-size: 18px;
   font-weight: 400;
-  font-style: italic;
+  font-style: normal;
   margin-bottom: var(--space-3);
   line-height: 1.3;
   color: var(--text);
@@ -1169,7 +1169,7 @@ label {
 .dash-quote-preview {
   font-family: var(--font-display);
   font-size: 18px;
-  font-style: italic;
+  font-style: normal;
   line-height: 1.5;
   color: var(--text);
   margin-bottom: var(--space-2);
@@ -1178,7 +1178,7 @@ label {
 .dash-quote-full {
   font-family: var(--font-display);
   font-size: 18px;
-  font-style: italic;
+  font-style: normal;
   line-height: 1.55;
   color: var(--text);
   margin-bottom: var(--space-2);
@@ -1265,7 +1265,7 @@ label {
 .saved-item-title {
   font-family: var(--font-display);
   font-size: 15px;
-  font-style: italic;
+  font-style: normal;
   color: var(--text);
   line-height: 1.3;
 }
@@ -1571,7 +1571,7 @@ label {
   font-family: var(--font-display);
   font-size: 28px;
   font-weight: 400;
-  font-style: italic;
+  font-style: normal;
 }
 
 .lib-add-btn {
@@ -1625,7 +1625,7 @@ label {
   color: var(--text-muted);
   font-size: 14px;
   padding: var(--space-8) var(--space-5);
-  font-style: italic;
+  font-style: normal;
 }
 
 /* Section labels */
@@ -1701,7 +1701,7 @@ label {
   text-align: center;
   font-family: var(--font-display);
   font-size: 12px;
-  font-style: italic;
+  font-style: normal;
   color: var(--text-secondary);
 }
 
@@ -1805,7 +1805,7 @@ label {
 .lib-lesson-title {
   font-family: var(--font-display);
   font-size: 15px;
-  font-style: italic;
+  font-style: normal;
   color: var(--text);
   line-height: 1.3;
 }
@@ -1869,7 +1869,7 @@ label {
 .lib-book-cover-ph span {
   font-family: var(--font-display);
   font-size: 11px;
-  font-style: italic;
+  font-style: normal;
   color: var(--text-secondary);
   line-height: 1.3;
   display: -webkit-box;
@@ -1930,7 +1930,7 @@ label {
   font-family: var(--font-display);
   font-size: 14px;
   font-weight: 400;
-  font-style: italic;
+  font-style: normal;
   color: var(--text);
   line-height: 1.3;
   word-break: break-word;
@@ -1973,7 +1973,7 @@ label {
   font-family: var(--font-display);
   font-size: 14px;
   font-weight: 400;
-  font-style: italic;
+  font-style: normal;
   color: var(--text);
   box-shadow: var(--shadow-lg);
 }
@@ -1986,7 +1986,7 @@ label {
   font-family: var(--font-display);
   font-size: 22px;
   font-weight: 400;
-  font-style: italic;
+  font-style: normal;
   margin-bottom: 4px;
 }
 
@@ -2097,7 +2097,7 @@ label {
 .hub-quote-full {
   font-family: var(--font-display);
   font-size: 16px;
-  font-style: italic;
+  font-style: normal;
   line-height: 1.6;
   color: var(--text);
 }
@@ -2195,7 +2195,7 @@ label {
   font-family: var(--font-display);
   font-size: 28px;
   font-weight: 400;
-  font-style: italic;
+  font-style: normal;
   margin-bottom: var(--space-3);
 }
 
@@ -2362,7 +2362,7 @@ label {
 .pq-opt-text {
   font-family: var(--font-display);
   font-size: 15px;
-  font-style: italic;
+  font-style: normal;
   line-height: 1.3;
   color: var(--text);
   flex: 1;
@@ -2472,7 +2472,7 @@ label {
 .pq-results-message {
   font-family: var(--font-display);
   font-size: 24px;
-  font-style: italic;
+  font-style: normal;
   color: var(--text);
   margin-bottom: var(--space-2);
 }
@@ -2523,7 +2523,7 @@ label {
 .pq-review-wrong .pq-review-icon { color: var(--danger); }
 
 .pq-review-text { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
-.pq-review-title { font-family: var(--font-display); font-size: 14px; font-style: italic; color: var(--text); }
+.pq-review-title { font-family: var(--font-display); font-size: 14px; font-weight: 600; color: var(--text); }
 .pq-review-book { font-size: 11px; color: var(--text-muted); }
 
 .pq-restart-btn {
@@ -2840,7 +2840,7 @@ label {
 .flashcard { perspective: 1000px; margin-bottom: var(--space-5); }
 .flashcard-inner { min-height: 240px; background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius); padding: var(--space-6) var(--space-5); display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; cursor: pointer; transition: transform var(--duration-slow) var(--ease-out); box-shadow: var(--shadow-sm); }
 .flashcard-inner.flipped { background: var(--bg-card-alt); }
-.flashcard-title { font-family: var(--font-display); font-size: 22px; font-weight: 400; font-style: italic; line-height: 1.3; }
+.flashcard-title { font-family: var(--font-display); font-size: 22px; font-weight: 700; font-style: normal; line-height: 1.3; }
 .flashcard-body { font-family: var(--font-body); font-size: 15px; line-height: 1.6; color: var(--text-secondary); margin-top: var(--space-4); }
 .flashcard-source { font-size: 13px; color: var(--text-muted); margin-top: var(--space-3); }
 .flashcard-hint { font-size: 12px; color: var(--text-muted); margin-top: var(--space-3); }
@@ -2858,7 +2858,7 @@ label {
   font-family: var(--font-display);
   font-size: 22px;
   font-weight: 400;
-  font-style: italic;
+  font-style: normal;
   margin-bottom: var(--space-2);
   color: var(--text);
 }
@@ -2989,7 +2989,7 @@ label {
   color: var(--text-muted);
   font-size: 14px;
   padding: var(--space-8) var(--space-5);
-  font-style: italic;
+  font-style: normal;
 }
 
 /* Hub Lesson Cards */
@@ -3008,7 +3008,7 @@ label {
   font-family: var(--font-display);
   font-size: 17px;
   font-weight: 400;
-  font-style: italic;
+  font-style: normal;
   color: var(--text);
   margin-bottom: var(--space-3);
   line-height: 1.35;
@@ -3025,7 +3025,7 @@ label {
   font-size: 14px;
   font-weight: 400;
   color: var(--text-muted);
-  font-style: italic;
+  font-style: normal;
 }
 
 /* Hub Topic Groups */
@@ -3505,7 +3505,7 @@ label {
   right: -10px;
   font-family: var(--font-display);
   font-size: 200px;
-  font-style: italic;
+  font-style: normal;
   color: var(--j-watermark);
   line-height: 1;
   pointer-events: none;
@@ -3522,14 +3522,14 @@ label {
 }
 
 .journey-title {
-  font-family: var(--font-display);
-  font-size: 36px;
-  font-weight: 400;
-  font-style: italic;
+  font-family: var(--font-body);
+  font-size: 32px;
+  font-weight: 700;
+  font-style: normal;
   line-height: 1.15;
   color: var(--j-text);
   margin-bottom: var(--space-5);
-  letter-spacing: -0.5px;
+  letter-spacing: -1px;
 }
 
 .journey-body {
@@ -3563,7 +3563,7 @@ label {
 .journey-pullquote {
   font-family: var(--font-display);
   font-size: 24px;
-  font-style: italic;
+  font-style: normal;
   line-height: 1.35;
   color: var(--j-text);
   margin: var(--space-6) 0;
@@ -3639,7 +3639,7 @@ label {
   justify-content: center;
   padding: 14px;
   font-family: var(--font-display);
-  font-style: italic;
+  font-style: normal;
   font-size: 14px;
   color: var(--j-text-muted);
 }
@@ -3647,7 +3647,7 @@ label {
 .journey-s-title {
   font-family: var(--font-display);
   font-size: 22px;
-  font-style: italic;
+  font-style: normal;
   color: var(--j-text);
   margin-bottom: 4px;
 }

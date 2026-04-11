@@ -116,7 +116,6 @@ const App = {
     const todayStr = new Date().toISOString().slice(0, 10);
 
     const hour = new Date().getHours();
-    const timeGreeting = hour < 12 ? 'Good morning' : hour < 18 ? 'Good afternoon' : 'Good evening';
 
     // Empty state
     if (allLessons.length === 0 && allQuotes.length === 0) {
@@ -179,7 +178,7 @@ const App = {
     if (hero) {
       html += `
         <section class="home-hero">
-          <div class="home-hero-label">${timeGreeting}</div>
+          <div class="home-hero-label">Today's lesson</div>
           <h1 class="home-hero-title">${hero.title}</h1>
           <p class="home-hero-excerpt">${hookSentence}</p>
           <button class="home-hero-cta" id="hero-journey" data-lesson-id="${hero.id}">
