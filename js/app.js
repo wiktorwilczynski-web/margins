@@ -185,19 +185,21 @@ const App = {
             Begin journey
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
           </button>
-          <div class="home-hero-source">
+          <div class="home-hero-source" id="hero-book-link" data-book-id="${heroBook?.id}">
             ${heroBook?.coverUrl ? `<img class="home-hero-cover" src="${heroBook.coverUrl}" alt="">` : ''}
             <div class="home-hero-source-text">
               <span class="home-hero-book">${heroBook?.title || ''}</span>
               <span class="home-hero-author">${heroBook?.author || ''}</span>
             </div>
+            <svg class="home-hero-source-chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg>
           </div>
           <div class="home-hero-actions">
-            <button class="home-action-btn ${this.isFavorite(hero.id) ? 'is-fav' : ''}" id="hero-fav" data-lesson-id="${hero.id}">
-              ${this.isFavorite(hero.id) ? '♥' : '♡'}
+            <button class="home-action-pill ${this.isFavorite(hero.id) ? 'is-fav' : ''}" id="hero-fav" data-lesson-id="${hero.id}">
+              ${this.isFavorite(hero.id) ? '♥ Saved' : '♡ Save'}
             </button>
-            <button class="home-action-btn" id="hero-chat" data-lesson-id="${hero.id}">
+            <button class="home-action-pill" id="hero-chat" data-lesson-id="${hero.id}">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+              Ask AI
             </button>
           </div>
         </section>
@@ -258,13 +260,19 @@ const App = {
       heroBtn.addEventListener('click', () => this.openLessonJourney(heroBtn.dataset.lessonId));
     }
 
+    // Hero book link → open book hub
+    const heroBookLink = document.getElementById('hero-book-link');
+    if (heroBookLink) {
+      heroBookLink.addEventListener('click', () => this.openBookHub(heroBookLink.dataset.bookId));
+    }
+
     // Hero favorite
     const heroFav = document.getElementById('hero-fav');
     if (heroFav) {
       heroFav.addEventListener('click', () => {
         this.toggleFavorite(heroFav.dataset.lessonId);
         const isFav = this.isFavorite(heroFav.dataset.lessonId);
-        heroFav.innerHTML = isFav ? '♥' : '♡';
+        heroFav.innerHTML = isFav ? '♥ Saved' : '♡ Save';
         heroFav.classList.toggle('is-fav', isFav);
       });
     }

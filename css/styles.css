@@ -805,6 +805,21 @@ label {
   gap: var(--space-3);
   margin-bottom: var(--space-3);
   animation: heroIn 0.7s var(--ease-out) 0.2s both;
+  cursor: pointer;
+  padding: var(--space-3);
+  margin-left: calc(-1 * var(--space-3));
+  border-radius: var(--radius);
+  transition: background var(--duration-fast) ease;
+}
+
+.home-hero-source:active {
+  background: var(--accent-soft);
+}
+
+.home-hero-source-chevron {
+  color: var(--text-muted);
+  margin-left: auto;
+  flex-shrink: 0;
 }
 
 .home-hero-cover {
@@ -838,26 +853,27 @@ label {
   animation: heroIn 0.7s var(--ease-out) 0.25s both;
 }
 
-.home-action-btn {
-  width: 40px;
-  height: 40px;
-  border-radius: 50%;
+.home-action-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  border-radius: var(--radius-full);
   border: 1px solid var(--border);
   background: var(--bg-card);
   color: var(--text-secondary);
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  font-family: var(--font-body);
+  font-size: 13px;
+  font-weight: 500;
   cursor: pointer;
-  font-size: 16px;
   transition: all var(--duration-fast) var(--ease-spring);
 }
 
-.home-action-btn:active {
-  transform: scale(0.9);
+.home-action-pill:active {
+  transform: scale(0.95);
 }
 
-.home-action-btn.is-fav {
+.home-action-pill.is-fav {
   color: var(--danger);
   border-color: rgba(220, 38, 38, 0.2);
   background: var(--danger-soft);
