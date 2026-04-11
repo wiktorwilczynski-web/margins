@@ -147,6 +147,8 @@ body {
   letter-spacing: -0.5px;
 }
 
+.top-bar-actions { display: flex; align-items: center; gap: 2px; }
+
 #settings-btn, #add-quote-btn {
   background: none;
   border: none;
