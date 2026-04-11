@@ -3528,9 +3528,10 @@ label {
   justify-content: center;
 }
 
-/* Concept + detail: top-align for scrolling */
+/* Concept + detail + examples: top-align for scrolling */
 .journey-stage[data-scene="concept"],
-.journey-stage[data-scene="detail"] {
+.journey-stage[data-scene="detail"],
+.journey-stage[data-scene="examples"] {
   justify-content: flex-start;
 }
 
@@ -3585,6 +3586,10 @@ label {
 .journey-stage[data-scene="detail"] {
   background: linear-gradient(160deg, #1a1510 0%, #0A0A0F 40%, #0d1020 100%);
 }
+[data-theme="dark"] .journey-stage[data-scene="examples"],
+.journey-stage[data-scene="examples"] {
+  background: linear-gradient(160deg, #0d1518 0%, #0A0A0F 40%, #151020 100%);
+}
 [data-theme="dark"] .journey-stage[data-scene="source"],
 .journey-stage[data-scene="source"] {
   background: linear-gradient(160deg, #101020 0%, #0A0A0F 50%, #0A0A0F 100%);
@@ -3599,6 +3604,9 @@ label {
 }
 :root:not([data-theme="dark"]) .journey-stage[data-scene="detail"] {
   background: linear-gradient(160deg, #F0EBE0 0%, #F5F4F0 40%, #E4E6F0 100%);
+}
+:root:not([data-theme="dark"]) .journey-stage[data-scene="examples"] {
+  background: linear-gradient(160deg, #E0EEF0 0%, #F5F4F0 40%, #F0E8F0 100%);
 }
 :root:not([data-theme="dark"]) .journey-stage[data-scene="source"] {
   background: linear-gradient(160deg, #E8E8F0 0%, #F5F4F0 50%, #F5F4F0 100%);
@@ -3747,7 +3755,52 @@ label {
   margin: var(--space-5) 0 var(--space-2);
 }
 
-/* ---- Scene 4: Source ---- */
+/* ---- Scene 4: Examples (In the real world) ---- */
+.j-examples {
+  padding: var(--space-4) 0;
+}
+
+.j-examples-label {
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 2px;
+  color: var(--j-text-muted);
+  margin-bottom: var(--space-2);
+  animation: contentReveal 0.5s var(--ease-out) both;
+}
+
+.j-examples-intro {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--j-text);
+  margin-bottom: var(--space-6);
+  animation: contentReveal 0.5s var(--ease-out) 0.1s both;
+}
+
+.j-examples-content {
+  font-size: 15px;
+  line-height: 1.8;
+  color: var(--j-text-secondary);
+  animation: contentReveal 0.5s var(--ease-out) 0.15s both;
+}
+
+.j-examples-content p { margin-bottom: var(--space-4); }
+.j-examples-content strong { color: var(--j-text); font-weight: 600; }
+.j-examples-content ul { padding-left: 0; list-style: none; margin-bottom: var(--space-4); }
+.j-examples-content li {
+  margin-bottom: var(--space-4);
+  padding: var(--space-4);
+  background: rgba(255,255,255,0.04);
+  border-radius: var(--radius-sm);
+  border-left: 3px solid var(--accent);
+}
+
+:root:not([data-theme="dark"]) .j-examples-content li {
+  background: rgba(0,0,0,0.03);
+}
+
+/* ---- Scene 5: Source ---- */
 .j-src {
   display: flex;
   flex-direction: column;
@@ -3805,6 +3858,8 @@ label {
   width: 100%;
   max-width: 260px;
   animation: contentReveal 0.5s var(--ease-out) 0.3s both;
+  position: relative;
+  z-index: 10;
 }
 
 .journey-s-btn {

@@ -39,6 +39,12 @@ const App = {
     const needsDetails = Storage.getData().books.some(b => b.lessons.some(l => !l.detail));
     if (needsDetails) {
       this.generateMissingDetails();
+    } else {
+      // Only generate examples after all details are done
+      const needsExamples = Storage.getData().books.some(b => b.lessons.some(l => !l.examples));
+      if (needsExamples) {
+        this.generateMissingExamples();
+      }
     }
   },
 
@@ -409,7 +415,21 @@ const App = {
       });
     }
 
-    // Scene 4: SOURCE — centered book card with actions
+    // Scene 4: REAL WORLD — cross-reference examples (if available)
+    if (lesson.examples) {
+      scenes.push({
+        type: 'examples',
+        html: `
+          <div class="j-examples">
+            <div class="j-examples-label">In the real world</div>
+            <div class="j-examples-intro">The same pattern shows up elsewhere</div>
+            <div class="j-examples-content">${this.parseMarkdown(lesson.examples)}</div>
+          </div>
+        `
+      });
+    }
+
+    // Scene 5: SOURCE — centered book card with actions
     const coverHtml = book.coverUrl
       ? `<img class="j-src-cover" src="${book.coverUrl}" alt="">`
       : `<div class="j-src-cover-ph">${book.title}</div>`;
@@ -444,11 +464,13 @@ const App = {
     // Render current scene
     const renderScene = (idx) => {
       const scene = scenes[idx];
+      const isLast = idx === total - 1;
+      const isFirst = idx === 0;
       viewport.innerHTML = `
         <div class="journey-stage" data-scene="${scene.type}">
           ${scene.html}
-          <div class="journey-tap-left"></div>
-          <div class="journey-tap-right"></div>
+          ${!isFirst ? `<div class="journey-tap-left"></div>` : ''}
+          ${!isLast ? `<div class="journey-tap-right"></div>` : ''}
         </div>
       `;
 
@@ -677,6 +699,61 @@ Use **bold** for key terms. Be concise and sharp. No padding or pleasantries.`;
     }
 
     this.showToast('Lesson details generated');
+  },
+
+  async generateMissingExamples() {
+    const data = Storage.getData();
+    const hasKey = (data.settings.geminiApiKey || data.settings.groqApiKey);
+    if (!hasKey) return;
+
+    const missing = [];
+    for (const book of data.books) {
+      for (const lesson of book.lessons) {
+        if (!lesson.examples) {
+          missing.push({ book, lesson });
+        }
+      }
+    }
+
+    if (missing.length === 0) return;
+
+    this.showToast(`Generating examples for ${missing.length} lessons...`);
+
+    for (const { book, lesson } of missing) {
+      try {
+        const systemPrompt = `You are a cross-disciplinary knowledge expert. Given a concept from a book, provide real-world parallels from OTHER contexts.
+
+Book: "${book.title}" by ${book.author}
+Concept: "${lesson.title}"
+Description: ${lesson.body}
+
+Provide exactly 3 real-world examples or parallels from DIFFERENT countries, time periods, industries, or fields that illustrate the same principle. Each must be:
+- A specific, named case (not generic)
+- From a different source than the original book
+- 2-3 sentences explaining the parallel
+
+Format as markdown. Use **bold** for the case name. Start each with a bullet point (- ). No introduction or conclusion, just the 3 examples.`;
+
+        const response = await LLM.chat(
+          [{ role: 'user', content: `Give real-world parallels for: "${lesson.title}"` }],
+          data.settings,
+          systemPrompt
+        );
+
+        Storage.updateData(d => {
+          for (const b of d.books) {
+            const l = b.lessons.find(x => x.id === lesson.id);
+            if (l) { l.examples = response; break; }
+          }
+        });
+      } catch (err) {
+        console.warn(`Failed to generate examples for "${lesson.title}":`, err.message);
+      }
+
+      await new Promise(r => setTimeout(r, 1500));
+    }
+
+    this.showToast('Examples generated');
   },
 
   seededShuffle(arr, seed) {
@@ -1808,6 +1885,7 @@ Use **bold** for key terms. Be concise and sharp. No padding or pleasantries.`;
     "title": "Self-contained lesson title with enough context to understand standalone (max 10 words)",
     "body": "2-4 sentence explanation. First sentence states the core concept. Remaining sentences give supporting detail or examples.",
     "detail": "A 2-3 paragraph deeper breakdown in markdown. Paragraph 1: the core concept explained more precisely. Paragraph 2: how ${author} develops this argument — what frameworks, metaphors, or narrative structure they use. Paragraph 3: key evidence — specific examples, case studies, or data points the author uses, as a bullet list.",
+    "examples": "3 real-world parallels from OTHER contexts (different countries, industries, time periods) illustrating the same principle. Each a markdown bullet point with **bold case name** and 2-3 sentence explanation.",
     "page": 45,
     "tags": ["optional", "tags"]
   }
@@ -1877,6 +1955,7 @@ Rules:
             title: l.title || '',
             body: l.body || '',
             detail: l.detail || null,
+            examples: l.examples || null,
             page: l.page || null,
             tags: l.tags || [],
             recallScore: 0,
