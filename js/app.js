@@ -182,12 +182,12 @@ const App = {
         html += `
           <div class="lesson-slide">
             <div class="dash-lesson-card">
-              <div class="lesson-card-header">
-                <div class="dash-lesson-title lesson-title-link" data-book-id="${book?.id}">${lesson.title}</div>
-                ${book && book.coverUrl ? `<img class="lesson-cover-thumb" src="${book.coverUrl}" alt="">` : ''}
-              </div>
+              <div class="dash-lesson-title lesson-title-link" data-book-id="${book?.id}">${lesson.title}</div>
               <div class="dash-lesson-body">${this.formatLessonBody(lesson.body)}</div>
-              <div class="dash-lesson-source">${book ? `<em>${book.title}</em> · ${book.author}` : ''}</div>
+              <div class="dash-lesson-source">
+                ${book && book.coverUrl ? `<img class="lesson-source-thumb" src="${book.coverUrl}" alt="">` : ''}
+                ${book ? `<em>${book.title}</em> · ${book.author}` : ''}
+              </div>
               <div class="followup-prompt">
                 <div class="followup-row">
                   <button class="followup-btn learn-more-btn" data-lesson-id="${lesson.id}" data-book-id="${book?.id}">Learn more</button>
@@ -666,12 +666,12 @@ Use **bold** for key terms. Be concise and sharp. No padding or pleasantries.`;
   renderTopicLessonCard(lesson, book) {
     return `
       <div class="topic-lesson-card">
-        <div class="lesson-card-header">
-          <div class="dash-lesson-title">${lesson.title}</div>
-          ${book && book.coverUrl ? `<img class="lesson-cover-thumb" src="${book.coverUrl}" alt="">` : ''}
-        </div>
+        <div class="dash-lesson-title">${lesson.title}</div>
         <div class="dash-lesson-body">${this.formatLessonBody(lesson.body)}</div>
-        <div class="dash-lesson-source">${book ? `<em>${book.title}</em> · ${book.author}` : ''}</div>
+        <div class="dash-lesson-source">
+          ${book && book.coverUrl ? `<img class="lesson-source-thumb" src="${book.coverUrl}" alt="">` : ''}
+          ${book ? `<em>${book.title}</em> · ${book.author}` : ''}
+        </div>
         <div class="followup-prompt" style="margin-top:14px;padding-top:0">
           <div class="followup-row">
             <button class="followup-btn learn-more-btn" data-lesson-id="${lesson.id}" data-book-id="${book?.id}">Learn more</button>
