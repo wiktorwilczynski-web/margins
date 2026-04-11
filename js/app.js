@@ -6,7 +6,6 @@ const App = {
   chatContext: null, // { type: 'book'|'lesson', id: string }
   flashcardFlipped: false,
   currentFlashcard: null,
-  connectionPair: null,
 
   initialized: false,
 
@@ -26,6 +25,21 @@ const App = {
     this.registerSW();
     this.renderTab('today');
     this.addToast();
+
+    // One-time cover refresh to ensure English editions
+    const coverVer = localStorage.getItem('covers_version');
+    if (coverVer !== '4') {
+      localStorage.setItem('covers_version', '4');
+      Covers.refreshAllCovers();
+    } else {
+      Covers.fetchMissingCovers();
+    }
+
+    // Backfill lesson details — runs until all lessons have detail
+    const needsDetails = Storage.getData().books.some(b => b.lessons.some(l => !l.detail));
+    if (needsDetails) {
+      this.generateMissingDetails();
+    }
   },
 
   // ===== NAVIGATION =====
@@ -37,6 +51,38 @@ const App = {
         this.renderTab(btn.dataset.tab);
       });
     });
+
+    // Back button / swipe-back support
+    history.replaceState({ base: true }, '');
+    window.addEventListener('popstate', () => {
+      this.closeTopLayer();
+    });
+  },
+
+  pushNav() {
+    history.pushState({ layer: true }, '');
+  },
+
+  closeTopLayer() {
+    // Close the frontmost open layer
+    const settingsPage = document.getElementById('settings-page');
+    if (settingsPage && settingsPage.classList.contains('open')) {
+      settingsPage.classList.remove('open');
+      return;
+    }
+    const modals = ['chat-modal', 'book-hub-modal', 'add-book-modal'];
+    for (const id of modals) {
+      const el = document.getElementById(id);
+      if (el && !el.classList.contains('hidden')) {
+        el.classList.add('hidden');
+        if (id === 'chat-modal') {
+          document.body.style.overflow = '';
+          const sheet = el.querySelector('.modal-content');
+          if (sheet) sheet.style.transform = '';
+        }
+        return;
+      }
+    }
   },
 
   renderTab(tab) {
@@ -65,56 +111,111 @@ const App = {
     const checkedInToday = streak.lastCheckIn === todayStr;
     const isSunday = new Date().getDay() === 0;
 
-    // Time-based greeting
     const hour = new Date().getHours();
     const timeGreeting = hour < 12 ? 'Good morning' : hour < 18 ? 'Good afternoon' : 'Good evening';
 
     let html = '<div class="fade-in">';
 
-    // --- Top: Streak bar (minimal, no emojis) ---
+    // --- Greeting + subtle streak ---
     html += `
       <div class="dash-header">
         <div class="dash-greeting">${timeGreeting}</div>
         <div class="dash-streak-row">
           <div class="dash-streak-num">${streak.current}</div>
           <div class="dash-streak-meta">
-            <div class="dash-streak-label">day streak</div>
-            <div class="dash-streak-best">best: ${streak.longest}</div>
+            <span class="dash-streak-label">day streak</span>
+            <span class="dash-streak-best">· best ${streak.longest}</span>
           </div>
-          ${!checkedInToday ? '<div class="dash-streak-dot pulse"></div>' : '<div class="dash-streak-done">done</div>'}
+          <span class="dash-streak-done">✓</span>
         </div>
       </div>
     `;
 
-    // --- Today's reading card ---
+    // --- Lessons carousel (up to 10) ---
     if (allLessons.length > 0) {
-      const dayIndex = this.dateToDayIndex(todayStr);
-      const lesson = allLessons[dayIndex % allLessons.length];
-      const book = data.books.find(b => b.lessons.some(l => l.id === lesson.id));
+      const dayIndex = this.dateToDayIndex(todayStr + 'H' + hour);
 
-      html += `
-        <div class="dash-section-label">Today's lesson</div>
-        <div class="dash-lesson-card">
-          <div class="dash-lesson-title">${lesson.title}</div>
-          <div class="dash-lesson-body">${lesson.body}</div>
-          <div class="dash-lesson-source">${book ? book.title : ''}</div>
-        </div>
-      `;
+      // Build recency-weighted pool: books later in array = more recently added
+      // top third (most recent) 3x, middle 2x, bottom (oldest) 1x
+      const sortedBooks = [...data.books]
+        .filter(b => b.lessons && b.lessons.length > 0)
+        .sort((a, b) => new Date(b.addedAt || 0) - new Date(a.addedAt || 0)); // newest first
+      const n = Math.max(sortedBooks.length, 1);
+      const weightedPool = [];
+      for (const lesson of allLessons) {
+        const rank = sortedBooks.findIndex(b => b.lessons.some(l => l.id === lesson.id));
+        const tier = rank === -1 ? 2 : Math.min(2, Math.floor((rank / n) * 3));
+        const weight = [3, 2, 1][tier];
+        for (let w = 0; w < weight; w++) weightedPool.push(lesson);
+      }
 
-      if (!checkedInToday) {
-        html += `<button class="btn btn-primary checkin-btn" id="checkin-btn">I've read this</button>`;
-      } else {
+      const shuffled = this.seededShuffle(weightedPool, dayIndex);
+      const count = Math.min(10, allLessons.length);
+      const lessonSlice = [];
+      const seenIds = new Set();
+      let lastBookId = null;
+      const pool = [...shuffled];
+      for (let i = 0; i < count && pool.length > 0; i++) {
+        // Prefer: not seen + not same book as last
+        let idx = pool.findIndex(l => {
+          if (seenIds.has(l.id)) return false;
+          const b = data.books.find(bk => bk.lessons && bk.lessons.some(lk => lk.id === l.id));
+          return !b || b.id !== lastBookId;
+        });
+        // Fallback: just not seen
+        if (idx === -1) idx = pool.findIndex(l => !seenIds.has(l.id));
+        if (idx === -1) break;
+        const picked = pool.splice(idx, 1)[0];
+        lessonSlice.push(picked);
+        seenIds.add(picked.id);
+        const pb = data.books.find(bk => bk.lessons && bk.lessons.some(lk => lk.id === picked.id));
+        lastBookId = pb?.id || null;
+      }
+
+      html += `<div class="dash-section-label">Today's lessons</div>`;
+      html += `<div class="carousel-wrap" id="carousel-wrap">`;
+      html += `<div class="lesson-carousel" id="lesson-carousel">`;
+
+      for (let i = 0; i < lessonSlice.length; i++) {
+        const lesson = lessonSlice[i];
+        const book = data.books.find(b => b.lessons.some(l => l.id === lesson.id));
         html += `
-          <div class="dash-recall-row">
-            <span class="dash-recall-label">Did you remember?</span>
-            <button class="dash-recall-btn" data-recall="remembered" data-lesson-id="${lesson.id}">Yes</button>
-            <button class="dash-recall-btn" data-recall="forgot" data-lesson-id="${lesson.id}">No</button>
-          </div>
-          <div class="followup-prompt">
-            <a id="ask-followup" data-lesson-id="${lesson.id}">Ask a follow-up</a>
+          <div class="lesson-slide">
+            <div class="dash-lesson-card">
+              <div class="lesson-card-header">
+                <div class="dash-lesson-title lesson-title-link" data-book-id="${book?.id}">${lesson.title}</div>
+                ${book && book.coverUrl ? `<img class="lesson-cover-thumb" src="${book.coverUrl}" alt="">` : ''}
+              </div>
+              <div class="dash-lesson-body">${this.formatLessonBody(lesson.body)}</div>
+              <div class="dash-lesson-source">${book ? `<em>${book.title}</em> · ${book.author}` : ''}</div>
+              <div class="followup-prompt">
+                <div class="followup-row">
+                  <button class="followup-btn learn-more-btn" data-lesson-id="${lesson.id}" data-book-id="${book?.id}">Learn more</button>
+                  <button class="followup-btn ask-followup" data-lesson-id="${lesson.id}">
+                    <span class="ai-pill-badge">AI</span>
+                    Follow up
+                  </button>
+                </div>
+                <div class="learn-more-section hidden" id="learn-more-${lesson.id}"></div>
+                ${book ? `<button class="followup-btn explore-book wide-followup" data-book-id="${book.id}">Explore the book</button>` : ''}
+              </div>
+            </div>
           </div>
         `;
       }
+
+      html += `</div>`;
+
+      if (lessonSlice.length > 1) {
+        html += `<div class="carousel-dots" id="carousel-dots">`;
+        for (let i = 0; i < lessonSlice.length; i++) {
+          html += `<span class="carousel-dot${i === 0 ? ' active' : ''}"></span>`;
+        }
+        html += `</div>`;
+      }
+
+      html += `</div>`; // close carousel-wrap
+
     } else if (allQuotes.length > 0) {
       const dayIndex = this.dateToDayIndex(todayStr);
       const quote = allQuotes[dayIndex % allQuotes.length];
@@ -127,63 +228,15 @@ const App = {
           <div class="dash-quote-preview">"${preview}"</div>
           <div class="dash-quote-full hidden">"${quote.text}"</div>
           <button class="dash-quote-expand" id="expand-today-quote">Read full quote</button>
-          <div class="dash-quote-source">${book ? book.author + ', ' + book.title : ''}</div>
+          <div class="dash-quote-source">${book ? `<em>${book.title}</em> · ${book.author}` : ''}</div>
         </div>
       `;
 
-      if (!checkedInToday) {
-        html += `<button class="btn btn-primary checkin-btn" id="checkin-btn">I've read this</button>`;
-      }
     } else {
       html += `
         <div class="empty-state">
           <h3>Your reading journey starts here</h3>
           <p>Add your first book in the Library tab to begin building your reading memory.</p>
-        </div>
-      `;
-    }
-
-    // --- Quick stats row ---
-    const totalQuotes = allQuotes.length;
-    const booksWithLessons = data.books.filter(b => b.lessons.length > 0).length;
-    html += `
-      <div class="dash-stats">
-        <div class="dash-stat">
-          <div class="dash-stat-val">${data.books.length}</div>
-          <div class="dash-stat-lbl">books</div>
-        </div>
-        <div class="dash-stat-divider"></div>
-        <div class="dash-stat">
-          <div class="dash-stat-val">${allLessons.length}</div>
-          <div class="dash-stat-lbl">lessons</div>
-        </div>
-        <div class="dash-stat-divider"></div>
-        <div class="dash-stat">
-          <div class="dash-stat-val">${totalQuotes}</div>
-          <div class="dash-stat-lbl">quotes</div>
-        </div>
-        <div class="dash-stat-divider"></div>
-        <div class="dash-stat">
-          <div class="dash-stat-val">${data.connections.length}</div>
-          <div class="dash-stat-lbl">connections</div>
-        </div>
-      </div>
-    `;
-
-    // --- Recent books (horizontal scroll) ---
-    if (data.books.length > 0) {
-      const recentBooks = [...data.books].sort((a, b) => (b.addedAt || '').localeCompare(a.addedAt || '')).slice(0, 6);
-      html += `
-        <div class="dash-section-label">Your books</div>
-        <div class="dash-books-scroll">
-          ${recentBooks.map(b => `
-            <div class="dash-book-thumb" data-book-id="${b.id}">
-              ${b.coverUrl
-                ? `<img src="${b.coverUrl}" alt="${b.title}" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">`
-                : ''}
-              <div class="dash-book-thumb-ph" ${b.coverUrl ? 'style="display:none"' : ''}>${b.title.split(':')[0]}</div>
-            </div>
-          `).join('')}
         </div>
       `;
     }
@@ -209,24 +262,40 @@ const App = {
     html += '</div>';
     main.innerHTML = html;
 
-    // --- Bind events ---
-    const checkinBtn = document.getElementById('checkin-btn');
-    if (checkinBtn) {
-      checkinBtn.addEventListener('click', () => this.handleCheckIn());
-    }
+    // Preload covers into browser cache
+    data.books.forEach(b => { if (b.coverUrl) { const img = new Image(); img.src = b.coverUrl; } });
 
-    main.querySelectorAll('[data-recall]').forEach(btn => {
-      btn.addEventListener('click', () => {
-        const lessonId = btn.dataset.lessonId;
-        const recalled = btn.dataset.recall === 'remembered';
-        this.handleRecall(lessonId, recalled);
-        btn.closest('.dash-recall-row').innerHTML = recalled
-          ? '<span class="dash-recall-result">Solid recall.</span>'
-          : '<span class="dash-recall-result">Noted \u2014 this will come back sooner.</span>';
+    // Lesson title → open book hub
+    main.querySelectorAll('.lesson-title-link').forEach(el => {
+      el.addEventListener('click', () => {
+        const bookId = el.dataset.bookId;
+        if (bookId) this.openBookHub(bookId);
       });
     });
 
-    // Expand today's quote
+    // Follow-up button
+    main.querySelectorAll('.ask-followup').forEach(btn => {
+      btn.addEventListener('click', () => {
+        this.openChatWithContext('lesson', btn.dataset.lessonId);
+      });
+    });
+
+    // Explore book button
+    main.querySelectorAll('.explore-book').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const bookId = btn.dataset.bookId;
+        if (bookId) this.openBookHub(bookId);
+      });
+    });
+
+    // Learn More button
+    main.querySelectorAll('.learn-more-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        this.handleLearnMore(btn.dataset.lessonId, btn.dataset.bookId);
+      });
+    });
+
+    // Quote expand
     const expandBtn = document.getElementById('expand-today-quote');
     if (expandBtn) {
       expandBtn.addEventListener('click', () => {
@@ -240,13 +309,53 @@ const App = {
       });
     }
 
-    const followup = document.getElementById('ask-followup');
-    if (followup) {
-      followup.addEventListener('click', () => {
-        this.openChatWithContext('lesson', followup.dataset.lessonId);
-      });
+    // Carousel scroll → dots
+    const carousel = document.getElementById('lesson-carousel');
+    if (carousel) {
+      const updateDotsPosition = () => {
+        const dots = document.getElementById('carousel-dots');
+        if (!dots) return;
+        const idx = Math.round(carousel.scrollLeft / carousel.offsetWidth);
+        const slides = carousel.querySelectorAll('.lesson-slide');
+        const activeSlide = slides[idx] || slides[0];
+        if (activeSlide) {
+          const card = activeSlide.querySelector('.dash-lesson-card');
+          if (card) {
+            dots.style.top = (card.offsetHeight + 8) + 'px';
+          }
+        }
+      };
+
+      // Expose so handleLearnMore can trigger a re-position after expansion
+      this._updateDotsPosition = updateDotsPosition;
+
+      let scrollTimer;
+      carousel.addEventListener('scroll', () => {
+        clearTimeout(scrollTimer);
+        scrollTimer = setTimeout(() => {
+          const idx = Math.round(carousel.scrollLeft / carousel.offsetWidth);
+          main.querySelectorAll('.carousel-dot').forEach((dot, i) => {
+            dot.classList.toggle('active', i === idx);
+          });
+          // After swipe settles, close any open Learn More and unlock slide heights
+          const openSections = main.querySelectorAll('.learn-more-section:not(.hidden)');
+          if (openSections.length > 0) {
+            openSections.forEach(s => { s.classList.add('hidden'); s.innerHTML = ''; });
+            carousel.querySelectorAll('.lesson-slide').forEach(s => {
+              s.style.height = '';
+              s.style.overflow = '';
+            });
+          }
+          updateDotsPosition();
+        }, 50);
+      }, { passive: true });
+
+      // Set initial dot position after render
+      requestAnimationFrame(() => requestAnimationFrame(updateDotsPosition));
     }
 
+    // Book cards → hub
+    // Weekly reflection save
     const saveReflection = document.getElementById('save-reflection');
     if (saveReflection) {
       saveReflection.addEventListener('click', () => {
@@ -268,11 +377,144 @@ const App = {
         this.showToast('Reflection saved');
       });
     }
+  },
 
-    // Book thumbs navigation
-    main.querySelectorAll('.dash-book-thumb').forEach(thumb => {
-      thumb.addEventListener('click', () => this.openBookHub(thumb.dataset.bookId));
-    });
+  formatLessonBody(body) {
+    // Split into sentences
+    const sentences = body.match(/[^.!?]+[.!?]+/g) || [body];
+    if (sentences.length <= 1) return body;
+
+    // Pair: concept (normal text) → example (indented, muted)
+    let html = '';
+    for (let i = 0; i < sentences.length; i++) {
+      const s = sentences[i].trim();
+      if (!s) continue;
+      if (i % 2 === 0) {
+        html += `<div class="lesson-concept">${s}</div>`;
+      } else {
+        html += `<div class="lesson-example">${s}</div>`;
+      }
+    }
+    return html;
+  },
+
+  handleLearnMore(lessonId, bookId) {
+    const section = document.getElementById(`learn-more-${lessonId}`);
+    if (!section) return;
+    const carousel = document.getElementById('lesson-carousel');
+
+    // Toggle if already visible
+    if (!section.classList.contains('hidden')) {
+      section.classList.add('hidden');
+      section.innerHTML = '';
+      if (carousel) carousel.querySelectorAll('.lesson-slide').forEach(s => {
+        s.style.height = '';
+        s.style.overflow = '';
+      });
+      requestAnimationFrame(() => { if (this._updateDotsPosition) this._updateDotsPosition(); });
+      return;
+    }
+
+    // Lock adjacent slides at their current pixel height before the active card expands,
+    // so they don't grow with the carousel and show white space during swipe
+    if (carousel) {
+      const activeIdx = Math.round(carousel.scrollLeft / carousel.offsetWidth);
+      carousel.querySelectorAll('.lesson-slide').forEach((slide, i) => {
+        if (i !== activeIdx) {
+          slide.style.height = slide.offsetHeight + 'px';
+          slide.style.overflow = 'hidden';
+        }
+      });
+    }
+
+    section.classList.remove('hidden');
+
+    const data = Storage.getData();
+    const book = data.books.find(b => b.id === bookId);
+    if (!book) return;
+    const lesson = book.lessons.find(l => l.id === lessonId);
+    if (!lesson) return;
+
+    if (lesson.detail) {
+      section.innerHTML = `<div class="learn-more-content">${this.parseMarkdown(lesson.detail)}</div>`;
+    } else {
+      section.innerHTML = `<div class="learn-more-content"><p style="color:var(--text-muted)">Details not yet available. Re-import this book with the updated prompt to generate details.</p></div>`;
+    }
+
+    // Re-position dots now that the card is taller
+    requestAnimationFrame(() => { if (this._updateDotsPosition) this._updateDotsPosition(); });
+  },
+
+  async generateMissingDetails() {
+    const data = Storage.getData();
+    const hasKey = (data.settings.geminiApiKey || data.settings.groqApiKey);
+    if (!hasKey) return;
+
+    // Collect all lessons missing detail
+    const missing = [];
+    for (const book of data.books) {
+      for (const lesson of book.lessons) {
+        if (!lesson.detail) {
+          missing.push({ book, lesson });
+        }
+      }
+    }
+
+    if (missing.length === 0) return;
+
+    this.showToast(`Generating details for ${missing.length} lessons...`);
+
+    for (const { book, lesson } of missing) {
+      try {
+        const systemPrompt = `You are an expert book analyst. Give a detailed breakdown of a concept from "${book.title}" by ${book.author}.
+
+The concept: "${lesson.title}" — ${lesson.body}
+
+Respond with a 2-3 paragraph breakdown in markdown:
+- Paragraph 1: The core concept explained more precisely
+- Paragraph 2: How ${book.author} develops this argument — frameworks, metaphors, or narrative
+- Paragraph 3: Key evidence as bullet points — specific examples, case studies, or data
+
+Use **bold** for key terms. Be concise and sharp. No padding or pleasantries.`;
+
+        const response = await LLM.chat(
+          [{ role: 'user', content: `Break down: "${lesson.title}"` }],
+          data.settings,
+          systemPrompt
+        );
+
+        // Save detail to storage immediately
+        Storage.updateData(d => {
+          for (const b of d.books) {
+            const l = b.lessons.find(x => x.id === lesson.id);
+            if (l) { l.detail = response; break; }
+          }
+        });
+      } catch (err) {
+        console.warn(`Failed to generate detail for "${lesson.title}":`, err.message);
+        // Continue with next lesson
+      }
+
+      // Small delay to avoid rate limits
+      await new Promise(r => setTimeout(r, 1500));
+    }
+
+    this.showToast('Lesson details generated');
+  },
+
+  seededShuffle(arr, seed) {
+    const a = [...arr];
+    const rng = (i) => {
+      let t = ((seed * 1664525 + i * 1013904223) | 0) + 0x6D2B79F5;
+      t = Math.imul(t ^ (t >>> 15), t | 1);
+      t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+      return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    };
+    for (let i = a.length - 1; i > 0; i--) {
+      const j = Math.floor(rng(i) * (i + 1));
+      [a[i], a[j]] = [a[j], a[i]];
+    }
+    return a;
   },
 
   handleCheckIn() {
@@ -420,15 +662,50 @@ const App = {
             </div>
           `;
         } else {
+          // Group lessons by their first tag
+          const groups = {};
+          const ungrouped = [];
           for (const lesson of freshBook.lessons) {
+            const tag = (lesson.tags && lesson.tags.length > 0) ? lesson.tags[0] : null;
+            if (tag) {
+              if (!groups[tag]) groups[tag] = [];
+              groups[tag].push(lesson);
+            } else {
+              ungrouped.push(lesson);
+            }
+          }
+
+          const renderLesson = (lesson) => {
             const isLocked = !freshBook.completed && lesson.page && freshBook.currentPage && lesson.page > freshBook.currentPage;
-            html += `
+            return `
               <div class="hub-lesson-item ${isLocked ? 'locked' : ''}">
-                ${isLocked ? `<div class="lesson-lock">\u{1F512} page ${lesson.page}</div>` : ''}
+                ${isLocked ? `<div class="lesson-lock">page ${lesson.page}</div>` : ''}
                 <h4>${lesson.title}</h4>
                 <p>${lesson.body}</p>
               </div>
             `;
+          };
+
+          const tagKeys = Object.keys(groups);
+          if (tagKeys.length > 1) {
+            // Multiple groups: render with topic headers
+            for (const tag of tagKeys) {
+              html += `<div class="hub-topic-group">`;
+              html += `<div class="hub-topic-header">${tag.charAt(0).toUpperCase() + tag.slice(1)}</div>`;
+              html += `<div class="hub-topic-lessons" id="group-${tag.replace(/\s+/g,'-')}">`;
+              for (const lesson of groups[tag]) {
+                html += renderLesson(lesson);
+              }
+              html += `</div></div>`;
+            }
+            for (const lesson of ungrouped) {
+              html += renderLesson(lesson);
+            }
+          } else {
+            // Only one tag or no tags: flat list
+            for (const lesson of freshBook.lessons) {
+              html += renderLesson(lesson);
+            }
           }
         }
       } else {
@@ -501,11 +778,15 @@ const App = {
 
     render();
     modal.classList.remove('hidden');
+    this.pushNav();
 
-    // Close handlers
-    modal.querySelector('.modal-close').onclick = () => modal.classList.add('hidden');
-    modal.querySelector('.modal-back').onclick = () => modal.classList.add('hidden');
-    modal.querySelector('.modal-overlay').onclick = () => modal.classList.add('hidden');
+    // Close handlers — close DOM immediately, then sync history
+    const closeHub = () => {
+      modal.classList.add('hidden');
+      if (history.state && history.state.layer) history.back();
+    };
+    modal.querySelector('.modal-back').onclick = closeHub;
+    modal.querySelector('.modal-overlay').onclick = closeHub;
   },
 
   // ===== PRACTICE TAB =====
@@ -515,38 +796,10 @@ const App = {
 
     const data = Storage.getData();
     const allLessons = this.getAllUnlockedLessons(data);
-    let mode = 'flashcard';
 
     const render = () => {
-      let html = `
-        <div class="practice-mode-toggle">
-          <button class="practice-mode-btn ${mode === 'flashcard' ? 'active' : ''}" data-mode="flashcard">Flashcard</button>
-          <button class="practice-mode-btn ${mode === 'connection' ? 'active' : ''}" data-mode="connection">Connection</button>
-        </div>
-      `;
-
-      if (mode === 'flashcard') {
-        html += this.renderFlashcard(data, allLessons);
-      } else {
-        html += this.renderConnection(data, allLessons);
-      }
-
-      main.innerHTML = html;
-
-      // Bind mode toggle
-      main.querySelectorAll('.practice-mode-btn').forEach(btn => {
-        btn.addEventListener('click', () => {
-          mode = btn.dataset.mode;
-          render();
-        });
-      });
-
-      // Bind flashcard events
-      if (mode === 'flashcard') {
-        this.bindFlashcardEvents(main, data, allLessons, render);
-      } else {
-        this.bindConnectionEvents(main, data, allLessons, render);
-      }
+      main.innerHTML = this.renderQuiz(data, allLessons);
+      this.bindQuizEvents(main, data, allLessons, render);
     };
 
     render();
@@ -634,137 +887,51 @@ const App = {
     }
   },
 
-  renderConnection(data, allLessons) {
-    if (allLessons.length < 2) {
-      return `
-        <div class="empty-state">
-          <h3>Need more lessons</h3>
-          <p>Add lessons to at least two different books to find connections between ideas.</p>
-        </div>
-      `;
-    }
-
-    // Get lessons from different books
-    if (!this.connectionPair) {
-      this.connectionPair = this.pickConnectionPair(data, allLessons);
-    }
-
-    const [lessonA, lessonB] = this.connectionPair;
-    const bookA = data.books.find(b => b.lessons.some(l => l.id === lessonA.id));
-    const bookB = data.books.find(b => b.lessons.some(l => l.id === lessonB.id));
-
-    let html = `
-      <div class="connection-pair">
-        <div class="connection-lesson">
-          <h4>${lessonA.title}</h4>
-          <div class="conn-book">${bookA ? bookA.title : ''}</div>
-          <p>${lessonA.body}</p>
-        </div>
-        <div class="connection-vs">How do these relate?</div>
-        <div class="connection-lesson">
-          <h4>${lessonB.title}</h4>
-          <div class="conn-book">${bookB ? bookB.title : ''}</div>
-          <p>${lessonB.body}</p>
-        </div>
-      </div>
-      <div class="connection-input">
-        <input type="text" id="connection-note" placeholder="Type your connection...">
-      </div>
-      <div class="connection-actions">
-        <button class="btn btn-primary" id="save-connection">Save connection</button>
-        <button class="btn btn-secondary" id="new-pair">New pair</button>
-      </div>
-      <div class="view-connections-link">
-        <a id="view-connections">View saved connections (${data.connections.length})</a>
-      </div>
-    `;
-
-    return html;
-  },
-
-  bindConnectionEvents(main, data, allLessons, render) {
-    const saveBtn = document.getElementById('save-connection');
-    const newBtn = document.getElementById('new-pair');
-    const viewBtn = document.getElementById('view-connections');
-
-    if (saveBtn) {
-      saveBtn.addEventListener('click', () => {
-        const note = document.getElementById('connection-note').value;
-        if (!note.trim()) {
-          this.showToast('Write a connection first');
-          return;
-        }
-        const [lessonA, lessonB] = this.connectionPair;
-        Storage.updateData(d => {
-          d.connections.push({
-            id: Storage.uuid(),
-            lessonAId: lessonA.id,
-            lessonBId: lessonB.id,
-            note,
-            createdAt: new Date().toISOString()
-          });
-        });
-        this.showToast('Connection saved');
-        this.connectionPair = null;
-        render();
-      });
-    }
-
-    if (newBtn) {
-      newBtn.addEventListener('click', () => {
-        this.connectionPair = null;
-        render();
-      });
-    }
-
-    if (viewBtn) {
-      viewBtn.addEventListener('click', () => this.showConnectionsArchive());
-    }
-  },
-
-  showConnectionsArchive() {
-    const data = Storage.getData();
-    const modal = document.getElementById('connections-modal');
-    const list = document.getElementById('connections-list');
-
-    if (data.connections.length === 0) {
-      list.innerHTML = '<div class="empty-state"><h3>No connections yet</h3><p>Find connections between lessons from different books in Practice mode.</p></div>';
-    } else {
-      const allLessons = this.getAllUnlockedLessons(data);
-      list.innerHTML = data.connections.map(conn => {
-        const la = allLessons.find(l => l.id === conn.lessonAId);
-        const lb = allLessons.find(l => l.id === conn.lessonBId);
-        return `
-          <div class="connection-archive-item">
-            <div class="conn-lessons">${la?.title || '?'} \u2194 ${lb?.title || '?'}</div>
-            <div class="conn-note">${conn.note}</div>
-          </div>
-        `;
-      }).join('');
-    }
-
-    modal.classList.remove('hidden');
-    modal.querySelector('.modal-close').onclick = () => modal.classList.add('hidden');
-    modal.querySelector('.modal-overlay').onclick = () => modal.classList.add('hidden');
-  },
-
   // ===== CHAT POPUP =====
   bindChatFab() {
     const fab = document.getElementById('chat-fab');
     const modal = document.getElementById('chat-modal');
     if (!fab || !modal) return;
 
-    fab.addEventListener('click', () => {
+    const openChat = () => {
       this.renderChatPopup();
       modal.classList.remove('hidden');
+      document.body.style.overflow = 'hidden';
+      this.pushNav();
       setTimeout(() => {
         const input = document.getElementById('chat-input');
         if (input) input.focus();
       }, 100);
-    });
+    };
 
-    modal.querySelector('.modal-close').addEventListener('click', () => modal.classList.add('hidden'));
-    modal.querySelector('.modal-overlay').addEventListener('click', () => modal.classList.add('hidden'));
+    const closeChat = () => {
+      modal.classList.add('hidden');
+      document.body.style.overflow = '';
+      const sheet = modal.querySelector('.modal-content');
+      if (sheet) sheet.style.transform = '';
+      if (history.state && history.state.layer) history.back();
+    };
+
+    fab.addEventListener('click', openChat);
+    modal.querySelector('.modal-close').addEventListener('click', closeChat);
+    modal.querySelector('.modal-overlay').addEventListener('click', closeChat);
+
+    // Keyboard avoidance — push the sheet above the keyboard
+    if (window.visualViewport) {
+      const adjustForKeyboard = () => {
+        if (modal.classList.contains('hidden')) return;
+        const sheet = modal.querySelector('.modal-content');
+        if (!sheet) return;
+        const kb = Math.max(0, window.innerHeight - window.visualViewport.height - window.visualViewport.offsetTop);
+        sheet.style.transform = kb > 50 ? `translateY(-${kb}px)` : '';
+        if (kb > 50) {
+          const msgs = document.getElementById('chat-messages');
+          if (msgs) msgs.scrollTop = msgs.scrollHeight;
+        }
+      };
+      window.visualViewport.addEventListener('resize', adjustForKeyboard);
+      window.visualViewport.addEventListener('scroll', adjustForKeyboard);
+    }
   },
 
   renderChatPopup() {
@@ -784,19 +951,49 @@ const App = {
         </div>
       `;
       document.getElementById('chat-go-settings').addEventListener('click', () => {
-        document.getElementById('chat-modal').classList.add('hidden');
-        document.getElementById('settings-modal').classList.remove('hidden');
+        // Close chat (no history.back — we're navigating forward to settings)
+        const chatModal = document.getElementById('chat-modal');
+        chatModal.classList.add('hidden');
+        document.body.style.overflow = '';
+        // Open settings on top
+        document.getElementById('settings-page').classList.add('open');
+        this.pushNav();
       });
       return;
     }
 
-    // Build context selector
-    let contextOptions = '<option value="">No context</option>';
-    for (const book of data.books) {
-      contextOptions += `<option value="book:${book.id}" ${this.chatContext?.type === 'book' && this.chatContext?.id === book.id ? 'selected' : ''}>${book.title}</option>`;
+    // Determine selected book + lesson from chatContext
+    let selectedBookId = '';
+    let selectedLessonId = '';
+    if (this.chatContext?.type === 'book') {
+      selectedBookId = this.chatContext.id;
+    } else if (this.chatContext?.type === 'lesson') {
+      selectedLessonId = this.chatContext.id;
+      for (const b of data.books) {
+        if (b.lessons && b.lessons.some(l => l.id === selectedLessonId)) {
+          selectedBookId = b.id;
+          break;
+        }
+      }
     }
 
-    // Build provider selector
+    // Book dropdown
+    let bookOptions = '<option value="">No book</option>';
+    for (const book of data.books) {
+      if (book.title === 'Loose Quotes') continue;
+      bookOptions += `<option value="${book.id}" ${selectedBookId === book.id ? 'selected' : ''}>${book.title}</option>`;
+    }
+
+    // Lesson dropdown (from selected book)
+    const selectedBook = data.books.find(b => b.id === selectedBookId);
+    let lessonOptions = '<option value="">All lessons</option>';
+    if (selectedBook) {
+      for (const lesson of selectedBook.lessons) {
+        lessonOptions += `<option value="${lesson.id}" ${selectedLessonId === lesson.id ? 'selected' : ''}>${lesson.title}</option>`;
+      }
+    }
+
+    // Provider dropdown
     const configured = LLM.getConfiguredProviders(data.settings);
     const currentProvider = LLM.selectedProvider || 'auto';
     let providerOptions = `<option value="auto" ${currentProvider === 'auto' ? 'selected' : ''}>Auto</option>`;
@@ -808,15 +1005,21 @@ const App = {
     if (this.chatMessages.length === 0) {
       messagesHtml = '<div class="chat-empty">Ask anything about your books and lessons.</div>';
     } else {
-      messagesHtml = this.chatMessages.map(msg =>
-        `<div class="chat-msg ${msg.role}">${msg.content}</div>`
-      ).join('');
+      messagesHtml = this.chatMessages.map(msg => {
+        if (msg.role === 'user') {
+          const escaped = msg.content.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+          return `<div class="chat-msg user"><div class="chat-msg-user-bubble">${escaped}</div></div>`;
+        } else {
+          return `<div class="chat-msg assistant"><div class="chat-ai-label">AI</div><div class="chat-ai-content">${this.parseMarkdown(msg.content)}</div></div>`;
+        }
+      }).join('');
     }
 
     body.innerHTML = `
       <div class="chat-context-bar">
         <div class="chat-bar-row">
-          <select id="chat-context" class="chat-context-select">${contextOptions}</select>
+          <select id="chat-book" class="chat-context-select">${bookOptions}</select>
+          <select id="chat-lesson" class="chat-context-select">${lessonOptions}</select>
           <select id="chat-provider" class="chat-provider-select">${providerOptions}</select>
         </div>
       </div>
@@ -828,17 +1031,41 @@ const App = {
       </div>
     `;
 
-    // Scroll to bottom
+    // Scroll: show top of latest AI response, or bottom if no AI yet
     const container = document.getElementById('chat-messages');
-    container.scrollTop = container.scrollHeight;
+    const lastAI = container.querySelector('.chat-msg.assistant:last-child');
+    if (lastAI) {
+      container.scrollTop = lastAI.offsetTop - 8;
+    } else {
+      container.scrollTop = container.scrollHeight;
+    }
 
-    // Context change
-    document.getElementById('chat-context').addEventListener('change', (e) => {
-      const val = e.target.value;
-      if (!val) { this.chatContext = null; }
-      else {
-        const [type, id] = val.split(':');
-        this.chatContext = { type, id };
+    // Book change → rebuild lesson dropdown
+    document.getElementById('chat-book').addEventListener('change', (e) => {
+      const bookId = e.target.value;
+      const book = data.books.find(b => b.id === bookId);
+      const lessonSel = document.getElementById('chat-lesson');
+      lessonSel.innerHTML = '<option value="">All lessons</option>';
+      if (book) {
+        for (const lesson of book.lessons) {
+          lessonSel.innerHTML += `<option value="${lesson.id}">${lesson.title}</option>`;
+        }
+        this.chatContext = { type: 'book', id: bookId };
+      } else {
+        this.chatContext = null;
+      }
+    });
+
+    // Lesson change
+    document.getElementById('chat-lesson').addEventListener('change', (e) => {
+      const lessonId = e.target.value;
+      const bookId = document.getElementById('chat-book').value;
+      if (lessonId) {
+        this.chatContext = { type: 'lesson', id: lessonId };
+      } else if (bookId) {
+        this.chatContext = { type: 'book', id: bookId };
+      } else {
+        this.chatContext = null;
       }
     });
 
@@ -860,7 +1087,7 @@ const App = {
       const messagesDiv = document.getElementById('chat-messages');
       const typingEl = document.createElement('div');
       typingEl.className = 'chat-msg assistant typing';
-      typingEl.textContent = 'Thinking...';
+      typingEl.innerHTML = '<div class="chat-ai-label">AI</div><div class="chat-ai-content"><span class="typing-dots"><span></span><span></span><span></span></span></div>';
       messagesDiv.appendChild(typingEl);
       messagesDiv.scrollTop = messagesDiv.scrollHeight;
 
@@ -916,37 +1143,66 @@ const App = {
     if (this.chatMessages.length === 0) {
       div.innerHTML = '<div class="chat-empty">Ask anything about your books and lessons.</div>';
     } else {
-      div.innerHTML = this.chatMessages.map(msg =>
-        `<div class="chat-msg ${msg.role}">${msg.content}</div>`
-      ).join('');
+      div.innerHTML = this.chatMessages.map(msg => {
+        if (msg.role === 'user') {
+          const escaped = msg.content.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+          return `<div class="chat-msg user"><div class="chat-msg-user-bubble">${escaped}</div></div>`;
+        } else {
+          return `<div class="chat-msg assistant"><div class="chat-ai-label">AI</div><div class="chat-ai-content">${this.parseMarkdown(msg.content)}</div></div>`;
+        }
+      }).join('');
     }
-    div.scrollTop = div.scrollHeight;
+    // Show top of latest AI response; for user messages scroll to bottom
+    const lastMsg = div.querySelector('.chat-msg:last-child');
+    if (lastMsg && lastMsg.classList.contains('assistant')) {
+      div.scrollTop = lastMsg.offsetTop - 8;
+    } else {
+      div.scrollTop = div.scrollHeight;
+    }
   },
 
+  parseMarkdown(text) {
+    // Escape HTML
+    text = text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    // Headers (h3/h4 style)
+    text = text.replace(/^#{1,3}\s+(.+)$/gm, '<h4>$1</h4>');
+    // Bold
+    text = text.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+    // Italic (skip em tags that are already in text)
+    text = text.replace(/(?<!\*)\*(?!\*)(.+?)(?<!\*)\*(?!\*)/g, '<em>$1</em>');
+    // Code
+    text = text.replace(/`([^`]+)`/g, '<code>$1</code>');
+    // Bullet lists
+    text = text.replace(/^[-*]\s+(.+)$/gm, '<li>$1</li>');
+    // Wrap consecutive <li> in <ul>
+    text = text.replace(/((?:<li>.*<\/li>\n?)+)/g, '<ul>$1</ul>');
+    // Numbered lists
+    text = text.replace(/^\d+\.\s+(.+)$/gm, '<li>$1</li>');
+    // Paragraphs from double newlines
+    const parts = text.split(/\n\n+/);
+    text = parts.map(p => {
+      p = p.trim();
+      if (!p) return '';
+      if (p.startsWith('<h4>') || p.startsWith('<ul>') || p.startsWith('<ol>')) return p;
+      return `<p>${p.replace(/\n/g, '<br>')}</p>`;
+    }).join('');
+    return text;
+  },
 
   openChatWithContext(type, id) {
-    // If context is a lesson, find its parent book for the dropdown
-    if (type === 'lesson') {
-      const data = Storage.getData();
-      for (const book of data.books) {
-        if (book.lessons.some(l => l.id === id)) {
-          this.chatContext = { type: 'book', id: book.id };
-          break;
-        }
-      }
-    } else {
-      this.chatContext = { type, id };
-    }
+    this.chatContext = { type, id };
     this.renderChatPopup();
     document.getElementById('chat-modal').classList.remove('hidden');
+    document.body.style.overflow = 'hidden';
+    this.pushNav();
   },
 
   // ===== SETTINGS =====
   bindSettings() {
-    const modal = document.getElementById('settings-modal');
+    const page = document.getElementById('settings-page');
     const openBtn = document.getElementById('settings-btn');
 
-    openBtn.addEventListener('click', () => {
+    const openSettings = () => {
       const data = Storage.getData();
       document.getElementById('gemini-key').value = data.settings.geminiApiKey || '';
       document.getElementById('groq-key').value = data.settings.groqApiKey || '';
@@ -956,21 +1212,32 @@ const App = {
         btn.classList.toggle('active', btn.dataset.theme === data.settings.theme);
       });
 
-      modal.classList.remove('hidden');
-    });
+      // Reset to main settings pane
+      document.getElementById('settings-panes').classList.remove('show-sub');
+      page.classList.add('open');
+      this.pushNav();
+    };
 
-    modal.querySelector('.modal-close').addEventListener('click', () => modal.classList.add('hidden'));
-    modal.querySelector('.modal-overlay').addEventListener('click', () => modal.classList.add('hidden'));
+    const closeSettings = () => {
+      page.classList.remove('open');
+      if (history.state && history.state.layer) history.back();
+    };
+
+    openBtn.addEventListener('click', openSettings);
+    document.getElementById('settings-page-back').addEventListener('click', closeSettings);
 
     // Gemini key
     document.getElementById('gemini-key').addEventListener('change', (e) => {
       Storage.updateData(d => { d.settings.geminiApiKey = e.target.value; });
     });
 
-    // Toggle API keys section
-    document.getElementById('toggle-api-keys').addEventListener('click', () => {
-      const section = document.getElementById('api-keys-section');
-      section.classList.toggle('hidden');
+    // iOS-style API Keys sub-page navigation
+    document.getElementById('nav-api-keys').addEventListener('click', () => {
+      document.getElementById('settings-panes').classList.add('show-sub');
+    });
+
+    document.getElementById('settings-back').addEventListener('click', () => {
+      document.getElementById('settings-panes').classList.remove('show-sub');
     });
 
     // Toggle key visibility
@@ -1017,7 +1284,7 @@ const App = {
         await Storage.importJSON(file);
         this.showToast('Data imported successfully');
         this.renderTab(this.currentTab);
-        modal.classList.add('hidden');
+        closeSettings();
       } catch (err) {
         this.showToast('Import failed: ' + err.message);
       }
@@ -1039,7 +1306,7 @@ const App = {
     document.getElementById('sign-out').addEventListener('click', () => {
       if (window.Auth) {
         window.Auth.signOut();
-        modal.classList.add('hidden');
+        closeSettings();
       }
     });
 
@@ -1054,7 +1321,7 @@ const App = {
 
   applyTheme() {
     const data = Storage.getData();
-    const theme = data.settings.theme || 'cream';
+    const theme = data.settings.theme || 'dark';
     if (theme === 'dark') {
       document.documentElement.setAttribute('data-theme', 'dark');
       document.querySelector('meta[name="theme-color"]').content = '#0F0F0F';
@@ -1079,8 +1346,12 @@ const App = {
       });
     });
 
-    modal.querySelector('.modal-close').addEventListener('click', () => modal.classList.add('hidden'));
-    modal.querySelector('.modal-overlay').addEventListener('click', () => modal.classList.add('hidden'));
+    const closeAddBook = () => {
+      modal.classList.add('hidden');
+      if (history.state && history.state.layer) history.back();
+    };
+    modal.querySelector('.modal-close').addEventListener('click', closeAddBook);
+    modal.querySelector('.modal-overlay').addEventListener('click', closeAddBook);
 
     // Copy Claude prompt
     document.getElementById('copy-claude-prompt').addEventListener('click', () => {
@@ -1090,8 +1361,9 @@ const App = {
 
 [
   {
-    "title": "Short lesson title (max 8 words)",
-    "body": "2-4 sentence explanation of the lesson, in plain language",
+    "title": "Self-contained lesson title with enough context to understand standalone (max 10 words)",
+    "body": "2-4 sentence explanation. First sentence states the core concept. Remaining sentences give supporting detail or examples.",
+    "detail": "A 2-3 paragraph deeper breakdown in markdown. Paragraph 1: the core concept explained more precisely. Paragraph 2: how ${author} develops this argument — what frameworks, metaphors, or narrative structure they use. Paragraph 3: key evidence — specific examples, case studies, or data points the author uses, as a bullet list.",
     "page": 45,
     "tags": ["optional", "tags"]
   }
@@ -1102,6 +1374,8 @@ Rules:
 - Include the approximate page number where each lesson appears (best estimate is fine)
 - Order lessons by page number, ascending
 - Cover not just the headline ideas but also vivid examples, cases, and counter-intuitive points worth remembering
+- Every title MUST be self-contained — a reader seeing it out of context should immediately understand what it refers to. Bad: "Poland as the Counter-Example". Good: "Poland Resisted Shock Therapy Through Strong Unions"
+- The "detail" field should use markdown: **bold** for key terms, bullet points (- ) for evidence lists
 - Output ONLY the JSON array, no preamble, no markdown code fences`;
 
       navigator.clipboard.writeText(prompt).then(() => {
@@ -1158,6 +1432,7 @@ Rules:
             id: Storage.uuid(),
             title: l.title || '',
             body: l.body || '',
+            detail: l.detail || null,
             page: l.page || null,
             tags: l.tags || [],
             recallScore: 0,
@@ -1183,7 +1458,7 @@ Rules:
       document.getElementById('new-book-author').value = '';
       document.getElementById('new-book-pages').value = '';
       document.getElementById('lessons-json').value = '';
-      modal.classList.add('hidden');
+      closeAddBook();
       this.showToast('Book added');
       if (this.currentTab === 'library') this.renderLibrary();
     });
@@ -1226,7 +1501,7 @@ Rules:
       document.getElementById('quick-quote').value = '';
       document.getElementById('quick-author').value = '';
       document.getElementById('quick-book').value = '';
-      modal.classList.add('hidden');
+      closeAddBook();
       this.showToast('Quote saved');
       if (this.currentTab === 'library') this.renderLibrary();
     });
@@ -1234,6 +1509,7 @@ Rules:
 
   openAddBookModal() {
     document.getElementById('add-book-modal').classList.remove('hidden');
+    this.pushNav();
   },
 
   // ===== HELPERS =====
@@ -1269,6 +1545,193 @@ Rules:
     return Math.abs(hash);
   },
 
+  // ===== CONCEPT QUIZ =====
+  buildQuizQuestions(data, allLessons, count = 10) {
+    if (allLessons.length < 4) return null;
+
+    // Shuffle and pick questions
+    const shuffled = [...allLessons].sort(() => Math.random() - 0.5);
+    const selected = shuffled.slice(0, Math.min(count, shuffled.length));
+
+    return selected.map(lesson => {
+      const correctBook = data.books.find(b => b.lessons.some(l => l.id === lesson.id));
+
+      // Pick 3 wrong lesson titles from the full pool (different lessons)
+      const others = allLessons
+        .filter(l => l.id !== lesson.id)
+        .sort(() => Math.random() - 0.5)
+        .slice(0, 3);
+
+      // Options: 4 lesson objects shuffled, marked with correct id
+      const options = [...others, lesson].sort(() => Math.random() - 0.5);
+      return { lesson, correctBook, options, chosen: null };
+    });
+  },
+
+  renderQuiz(data, allLessons) {
+    if (allLessons.length < 4) {
+      return `
+        <div class="empty-state">
+          <h3>Need more lessons</h3>
+          <p>Add at least 4 lessons across your books to start the quiz.</p>
+        </div>
+      `;
+    }
+
+    if (!this.quizSession) {
+      const questions = this.buildQuizQuestions(data, allLessons);
+      if (!questions) return `<div class="empty-state"><h3>Not enough data</h3></div>`;
+      this.quizSession = { questions, current: 0, score: 0, finished: false };
+    }
+
+    const session = this.quizSession;
+    if (session.finished) return this.renderQuizResults(session);
+
+    const q = session.questions[session.current];
+    const total = session.questions.length;
+    const progressPct = Math.round((session.current / total) * 100);
+    const isCorrect = q.chosen && q.chosen === q.lesson.id;
+    const labels = ['A', 'B', 'C', 'D'];
+
+    return `
+      <div class="quiz-wrap">
+        <div class="quiz-top-bar">
+          <span class="quiz-counter">${session.current + 1}<span class="quiz-counter-total"> / ${total}</span></span>
+          <div class="quiz-progress-bar"><div class="quiz-progress-fill" style="width:${progressPct}%"></div></div>
+          <span class="quiz-score-pill ${session.score > 0 ? 'has-score' : ''}">${session.score} ✓</span>
+        </div>
+
+        <div class="quiz-card">
+          <div class="quiz-card-label">Name the concept</div>
+          <div class="quiz-prompt-body">${this.quizFormatBody(q.lesson.body)}</div>
+        </div>
+
+        <div class="quiz-options" id="quiz-options">
+          ${q.options.map((opt, i) => {
+            let state = '';
+            let icon = labels[i];
+            if (q.chosen) {
+              if (opt.id === q.lesson.id) { state = 'correct'; icon = '✓'; }
+              else if (opt.id === q.chosen) { state = 'wrong'; icon = '✗'; }
+              else state = 'dim';
+            }
+            return `
+              <button class="quiz-option ${state}" data-lesson-id="${opt.id}" ${q.chosen ? 'disabled' : ''}>
+                <span class="quiz-opt-label">${icon}</span>
+                <span class="quiz-opt-title">${opt.title}</span>
+              </button>
+            `;
+          }).join('')}
+        </div>
+
+        ${q.chosen ? `
+          <div class="quiz-feedback ${isCorrect ? 'quiz-feedback-correct' : 'quiz-feedback-wrong'}">
+            ${isCorrect
+              ? `<strong>Correct!</strong> — from <em>${q.correctBook?.title || ''}</em>`
+              : `<strong>${q.lesson.title}</strong> — from <em>${q.correctBook?.title || ''}</em>`}
+          </div>
+          <button class="btn btn-primary quiz-next-btn" id="quiz-next">
+            ${session.current + 1 < total ? 'Next →' : 'See results'}
+          </button>
+        ` : ''}
+      </div>
+    `;
+  },
+
+  renderQuizResults(session) {
+    const total = session.questions.length;
+    const score = session.score;
+    const pct = Math.round((score / total) * 100);
+
+    const storedBest = parseInt(localStorage.getItem('quiz_best') || '0');
+    const isNewBest = score > storedBest;
+    if (isNewBest) localStorage.setItem('quiz_best', String(score));
+    const best = isNewBest ? score : storedBest;
+
+    let emoji, message;
+    if (pct === 100)    { emoji = '🏆'; message = 'Perfect score!'; }
+    else if (pct >= 80) { emoji = '⭐'; message = 'Great memory!'; }
+    else if (pct >= 60) { emoji = '👍'; message = 'Solid effort'; }
+    else if (pct >= 40) { emoji = '📚'; message = 'Keep at it'; }
+    else                { emoji = '💪'; message = 'Practice makes perfect'; }
+
+    const reviewHtml = session.questions.map(q => {
+      const correct = q.chosen === q.lesson.id;
+      return `
+        <div class="quiz-review-item ${correct ? 'review-correct' : 'review-wrong'}">
+          <span class="review-icon">${correct ? '✓' : '✗'}</span>
+          <span class="review-text">
+            <span class="review-lesson">${q.lesson.title}</span>
+            <span class="review-book">${q.correctBook?.title || ''}</span>
+          </span>
+        </div>
+      `;
+    }).join('');
+
+    return `
+      <div class="quiz-results">
+        <div class="quiz-results-hero">
+          <div class="quiz-results-emoji">${emoji}</div>
+          <div class="quiz-results-score">${score}<span class="quiz-results-total">/${total}</span></div>
+          <div class="quiz-results-message">${message}</div>
+          <div class="quiz-results-sub">
+            ${isNewBest
+              ? `<span class="quiz-best-badge">New best 🎉</span>`
+              : `Best: ${best}/${total}`}
+          </div>
+        </div>
+        <div class="quiz-review">
+          <div class="quiz-review-label">Review</div>
+          ${reviewHtml}
+        </div>
+        <button class="btn btn-primary quiz-restart-btn" id="quiz-restart">Play again</button>
+      </div>
+    `;
+  },
+
+  quizFormatBody(body) {
+    if (!body) return '';
+    const clean = body.replace(/<[^>]+>/g, '').replace(/\s+/g, ' ').trim();
+    if (clean.length <= 300) return clean;
+    const cut = clean.lastIndexOf(' ', 300);
+    return clean.slice(0, cut > 0 ? cut : 300) + '…';
+  },
+
+  bindQuizEvents(main, data, allLessons, render) {
+    // Option tap
+    main.querySelectorAll('.quiz-option:not([disabled])').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const session = this.quizSession;
+        if (!session) return;
+        const q = session.questions[session.current];
+        if (q.chosen) return;
+        q.chosen = btn.dataset.lessonId;
+        if (q.chosen === q.lesson.id) session.score++;
+        render();
+      });
+    });
+
+    // Next / finish
+    const nextBtn = document.getElementById('quiz-next');
+    if (nextBtn) {
+      nextBtn.addEventListener('click', () => {
+        const session = this.quizSession;
+        session.current++;
+        if (session.current >= session.questions.length) session.finished = true;
+        render();
+      });
+    }
+
+    // Restart
+    const restartBtn = document.getElementById('quiz-restart');
+    if (restartBtn) {
+      restartBtn.addEventListener('click', () => {
+        this.quizSession = null;
+        render();
+      });
+    }
+  },
+
   pickWeightedLesson(lessons) {
     // Lessons with lower recallScore should appear more often
     const weighted = lessons.map(l => ({
@@ -1282,32 +1745,6 @@ Rules:
       if (random <= 0) return w.lesson;
     }
     return lessons[0];
-  },
-
-  pickConnectionPair(data, allLessons) {
-    // Try to pick from different books
-    const bookLessons = {};
-    for (const book of data.books) {
-      const unlocked = book.lessons.filter(l =>
-        book.completed || !l.page || !book.currentPage || l.page <= book.currentPage
-      );
-      if (unlocked.length > 0) {
-        bookLessons[book.id] = unlocked;
-      }
-    }
-
-    const bookIds = Object.keys(bookLessons);
-    if (bookIds.length >= 2) {
-      // Pick two different books
-      const shuffled = bookIds.sort(() => Math.random() - 0.5);
-      const a = bookLessons[shuffled[0]][Math.floor(Math.random() * bookLessons[shuffled[0]].length)];
-      const b = bookLessons[shuffled[1]][Math.floor(Math.random() * bookLessons[shuffled[1]].length)];
-      return [a, b];
-    }
-
-    // Fallback: pick any two different lessons
-    const shuffled = [...allLessons].sort(() => Math.random() - 0.5);
-    return [shuffled[0], shuffled[1] || shuffled[0]];
   },
 
   // ===== TOAST =====

@@ -116,9 +116,9 @@ const LLM = {
   },
 
   buildSystemPrompt(book, lessons, quotes) {
-    let prompt = '';
+    let prompt = 'Be concise and sharp. Use markdown (bold, bullets, headers) when it aids clarity. Avoid padding, pleasantries, or repetition. ';
     if (book) {
-      prompt = `The user is asking about the book "${book.title}" by ${book.author}.`;
+      prompt += `The user is asking about the book "${book.title}" by ${book.author}.`;
       if (lessons && lessons.length > 0) {
         prompt += ` Here are the lessons they have for it:\n`;
         lessons.forEach((l, i) => { prompt += `${i + 1}. ${l.title}: ${l.body}\n`; });

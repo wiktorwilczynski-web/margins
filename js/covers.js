@@ -3,18 +3,27 @@
 const Covers = {
   cache: {},
 
+  // Hardcoded English editions for books that Open Library misidentifies
+  COVER_OVERRIDES: {
+    'the shock doctrine__naomi klein': 'https://covers.openlibrary.org/b/isbn/9780805079838-L.jpg',
+  },
+
   async fetchCover(title, author) {
     const key = `${title}__${author}`;
+    const overrideKey = key.toLowerCase();
+    if (this.COVER_OVERRIDES[overrideKey]) {
+      this.cache[key] = this.COVER_OVERRIDES[overrideKey];
+      return this.COVER_OVERRIDES[overrideKey];
+    }
     if (this.cache[key] !== undefined) return this.cache[key];
 
     try {
-      // Try search API for better matching
       const query = encodeURIComponent(`${title} ${author}`);
-      const res = await fetch(`https://openlibrary.org/search.json?q=${query}&limit=3`);
+      // lang=eng biases results toward English editions
+      const res = await fetch(`https://openlibrary.org/search.json?q=${query}&lang=eng&limit=5`);
       const json = await res.json();
 
       if (json.docs && json.docs.length > 0) {
-        // Find the best match with a cover
         for (const doc of json.docs) {
           if (doc.cover_i) {
             const url = `https://covers.openlibrary.org/b/id/${doc.cover_i}-L.jpg`;
@@ -48,9 +57,34 @@ const Covers = {
 
     if (updated) {
       Storage.save(data);
-      // Re-render library if visible
       if (window.App && window.App.currentTab === 'library') {
         window.App.renderLibrary();
+      }
+    }
+  },
+
+  // Force re-fetch all covers (used to upgrade to English editions)
+  async refreshAllCovers() {
+    const data = Storage.getData();
+    this.cache = {}; // clear in-memory cache
+    let updated = false;
+
+    for (const book of data.books) {
+      if (book.title === 'Loose Quotes') continue;
+      book.coverUrl = null; // clear stored cover
+      const url = await this.fetchCover(book.title, book.author);
+      if (url) {
+        book.coverUrl = url;
+        updated = true;
+      }
+    }
+
+    if (updated) {
+      Storage.save(data);
+      if (window.App) {
+        const tab = window.App.currentTab;
+        if (tab === 'library') window.App.renderLibrary();
+        else if (tab === 'today') window.App.renderToday();
       }
     }
   },

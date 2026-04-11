@@ -13,7 +13,7 @@ const Storage = {
         geminiApiKey: '',
         groqApiKey: '',
         reminderTime: '20:00',
-        theme: 'cream'
+        theme: 'dark'
       }
     };
   },
