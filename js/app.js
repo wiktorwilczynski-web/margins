@@ -358,80 +358,70 @@ const App = {
     const chrome = document.getElementById('journey-chrome');
     const viewport = document.getElementById('journey-viewport');
 
-    // Parse body
+    // Parse body into sentences
     const sentences = lesson.body.match(/[^.!?]+[.!?]+/g) || [lesson.body];
     const hookSentence = sentences[0]?.trim() || lesson.body;
 
-    // Format body for concept scene
-    const bodyHtml = sentences.map((s, i) => {
-      const txt = s.trim();
-      if (!txt) return '';
-      return i % 2 === 0
-        ? `<div class="journey-concept">${txt}</div>`
-        : `<div class="journey-example">${txt}</div>`;
-    }).join('');
+    // Pick a highlight sentence (NOT the first one, to avoid duplication)
+    const highlight = sentences.length > 2
+      ? sentences.slice(1).map(s => s.trim()).filter(s => s.length > 20 && s.length < 140).sort((a, b) => b.length - a.length)[0]
+      : null;
 
-    // Pull quote: pick the punchiest sentence (longest under 120 chars)
-    const pullQuote = sentences
-      .map(s => s.trim())
-      .filter(s => s.length > 30 && s.length < 120)
-      .sort((a, b) => b.length - a.length)[0] || hookSentence;
-
-    // Build scene data
+    // Build scene data — each scene is visually distinct
     const scenes = [];
 
-    // Scene 1: Hook
+    // Scene 1: HOOK — centered, dramatic, minimal text
     scenes.push({
       type: 'hook',
       html: `
-        <div class="journey-watermark">01</div>
-        <div class="journey-label">Lesson</div>
-        <div class="journey-accent-line"></div>
-        <h1 class="journey-title">${lesson.title}</h1>
-        <div class="journey-body">${hookSentence}</div>
+        <div class="j-hook">
+          <div class="j-hook-label">Today's lesson</div>
+          <h1 class="j-hook-title">${lesson.title}</h1>
+          <div class="j-hook-line"></div>
+          <p class="j-hook-excerpt">${hookSentence}</p>
+          <div class="j-hook-source">${book.title} · ${book.author}</div>
+        </div>
       `
     });
 
-    // Scene 2: Concept — full body with pull quote
+    // Scene 2: THE IDEA — full body, left-aligned, with optional highlight card
     scenes.push({
       type: 'concept',
       html: `
-        <div class="journey-watermark">02</div>
-        <div class="journey-label">The idea</div>
-        <div class="journey-accent-line"></div>
-        <div class="journey-pullquote">${pullQuote}</div>
-        ${bodyHtml}
+        <div class="j-idea">
+          <div class="j-idea-label">The idea</div>
+          ${highlight ? `<div class="j-idea-highlight">${highlight}</div>` : ''}
+          <div class="j-idea-body">${this.formatLessonBody(lesson.body)}</div>
+        </div>
       `
     });
 
-    // Scene 3: Detail (if available)
+    // Scene 3: GOING DEEPER — detail content (if available)
     if (lesson.detail) {
       scenes.push({
         type: 'detail',
         html: `
-          <div class="journey-watermark">03</div>
-          <div class="journey-label">Going deeper</div>
-          <div class="journey-accent-line"></div>
-          <div class="journey-detail">${this.parseMarkdown(lesson.detail)}</div>
+          <div class="j-deeper">
+            <div class="j-deeper-label">Going deeper</div>
+            <div class="j-deeper-content">${this.parseMarkdown(lesson.detail)}</div>
+          </div>
         `
       });
     }
 
-    // Scene 4: Source
+    // Scene 4: SOURCE — centered book card with actions
     const coverHtml = book.coverUrl
-      ? `<img class="journey-s-cover" src="${book.coverUrl}" alt="">`
-      : `<div class="journey-s-cover-ph">${book.title}</div>`;
-    const sceneNum = scenes.length + 1;
+      ? `<img class="j-src-cover" src="${book.coverUrl}" alt="">`
+      : `<div class="j-src-cover-ph">${book.title}</div>`;
 
     scenes.push({
       type: 'source',
       html: `
-        <div class="journey-watermark">0${sceneNum}</div>
-        <div class="journey-source-center">
+        <div class="j-src">
           ${coverHtml}
-          <div class="journey-s-title">${book.title}</div>
-          <div class="journey-s-author">${book.author}</div>
-          <div class="journey-s-actions">
+          <div class="j-src-title">${book.title}</div>
+          <div class="j-src-author">${book.author}</div>
+          <div class="j-src-actions">
             <button class="journey-s-btn primary" id="j-explore" data-book-id="${book.id}">Explore this book</button>
             <button class="journey-s-btn secondary" id="j-fav" data-lesson-id="${lesson.id}">${this.isFavorite(lesson.id) ? '♥ Saved' : '♡ Save lesson'}</button>
             <button class="journey-s-btn secondary" id="j-share">Share as image</button>

@@ -1315,31 +1315,7 @@ label {
 
 /* ===== CHAT FAB ===== */
 #chat-fab {
-  position: fixed;
-  bottom: calc(var(--tab-height) + var(--safe-bottom) + 12px);
-  left: 50%;
-  transform: translateX(-50%);
-  width: 44px;
-  height: 44px;
-  border-radius: 50%;
-  background: var(--accent);
-  color: #FFF;
-  border: none;
-  cursor: pointer;
-  box-shadow: 0 4px 16px rgba(79, 70, 229, 0.3);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 90;
-  transition: transform var(--duration-fast) var(--ease-spring), box-shadow var(--duration-fast) ease;
-}
-
-#chat-fab:active {
-  transform: translateX(-50%) scale(0.88);
-}
-
-[data-theme="dark"] #chat-fab {
-  box-shadow: 0 4px 20px rgba(124, 115, 255, 0.35);
+  display: none;
 }
 
 /* ===== CHAT SHEET ===== */
@@ -3477,12 +3453,13 @@ label {
   top: 0;
   left: 0;
   right: 0;
-  padding: var(--space-3) var(--space-4);
+  padding: var(--space-3) var(--space-4) var(--space-4);
   padding-top: calc(var(--space-3) + var(--safe-top));
   display: flex;
   align-items: center;
   gap: var(--space-2);
   z-index: 20;
+  background: linear-gradient(to bottom, var(--j-bg) 70%, transparent);
 }
 
 .journey-close {
@@ -3539,11 +3516,22 @@ label {
   inset: 0;
   display: flex;
   flex-direction: column;
-  justify-content: flex-end;
-  padding: 0 var(--space-6) var(--space-12);
-  padding-top: calc(60px + var(--safe-top));
+  padding: 0 var(--space-6) var(--space-10);
+  padding-top: calc(56px + var(--safe-top));
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
+}
+
+/* Hook + source: center content */
+.journey-stage[data-scene="hook"],
+.journey-stage[data-scene="source"] {
+  justify-content: center;
+}
+
+/* Concept + detail: top-align for scrolling */
+.journey-stage[data-scene="concept"],
+.journey-stage[data-scene="detail"] {
+  justify-content: flex-start;
 }
 
 /* Journey theme variables */
@@ -3616,88 +3604,106 @@ label {
   background: linear-gradient(160deg, #E8E8F0 0%, #F5F4F0 50%, #F5F4F0 100%);
 }
 
-/* Large translucent scene number watermark */
-.journey-watermark {
-  position: absolute;
-  top: 15%;
-  right: -10px;
-  font-family: var(--font-display);
-  font-size: 200px;
-  font-style: normal;
-  color: var(--j-watermark);
-  line-height: 1;
-  pointer-events: none;
-  user-select: none;
+/* ---- Scene 1: Hook — centered, dramatic ---- */
+.j-hook {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  min-height: 100%;
+  padding: var(--space-6);
 }
 
-.journey-label {
+.j-hook-label {
   font-size: 10px;
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 2px;
   color: var(--j-text-muted);
-  margin-bottom: var(--space-4);
+  margin-bottom: var(--space-6);
 }
 
-.journey-title {
+.j-hook-title {
   font-family: var(--font-body);
-  font-size: 32px;
+  font-size: 28px;
   font-weight: 700;
-  font-style: normal;
-  line-height: 1.15;
+  line-height: 1.2;
   color: var(--j-text);
-  margin-bottom: var(--space-5);
-  letter-spacing: -1px;
+  letter-spacing: -0.8px;
+  margin-bottom: var(--space-4);
+  max-width: 340px;
+  animation: contentReveal 0.5s var(--ease-out) 0.1s both;
 }
 
-.journey-body {
-  font-size: 16px;
-  line-height: 1.75;
-  color: var(--j-text-secondary);
-  max-width: 380px;
-}
-
-.journey-body strong {
-  color: var(--j-text);
-  font-weight: 600;
-}
-
-/* Animated accent line */
-.journey-accent-line {
-  width: 0;
+.j-hook-line {
+  width: 32px;
   height: 2px;
-  background: linear-gradient(90deg, var(--accent), var(--accent-light));
+  background: var(--accent);
   margin-bottom: var(--space-5);
   border-radius: 1px;
-  animation: lineGrow 0.8s var(--ease-out) 0.3s both;
+  animation: contentReveal 0.5s var(--ease-out) 0.2s both;
 }
 
-@keyframes lineGrow {
-  from { width: 0; }
-  to { width: 48px; }
-}
-
-/* Pull quote — dramatic highlighted text */
-.journey-pullquote {
-  font-family: var(--font-display);
-  font-size: 24px;
-  font-style: normal;
-  line-height: 1.35;
-  color: var(--j-text);
-  margin: var(--space-6) 0;
-  padding-left: var(--space-5);
-  border-left: 3px solid var(--accent);
-}
-
-/* Concept/example in journey context */
-.journey-concept {
+.j-hook-excerpt {
   font-size: 16px;
+  line-height: 1.7;
+  color: var(--j-text-secondary);
+  max-width: 320px;
+  animation: contentReveal 0.5s var(--ease-out) 0.25s both;
+}
+
+.j-hook-source {
+  font-size: 12px;
+  color: var(--j-text-muted);
+  margin-top: var(--space-8);
+  animation: contentReveal 0.5s var(--ease-out) 0.35s both;
+}
+
+/* ---- Scene 2: The Idea — left-aligned with highlight card ---- */
+.j-idea {
+  padding: var(--space-4) 0;
+}
+
+.j-idea-label {
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 2px;
+  color: var(--j-text-muted);
+  margin-bottom: var(--space-5);
+  animation: contentReveal 0.5s var(--ease-out) both;
+}
+
+.j-idea-highlight {
+  font-size: 20px;
+  font-weight: 600;
+  line-height: 1.4;
+  color: var(--j-text);
+  padding: var(--space-5);
+  background: rgba(255, 255, 255, 0.04);
+  border-radius: var(--radius);
+  border-left: 3px solid var(--accent);
+  margin-bottom: var(--space-6);
+  animation: contentReveal 0.5s var(--ease-out) 0.1s both;
+}
+
+:root:not([data-theme="dark"]) .j-idea-highlight {
+  background: rgba(0, 0, 0, 0.03);
+}
+
+.j-idea-body {
+  animation: contentReveal 0.5s var(--ease-out) 0.2s both;
+}
+
+.j-idea-body .lesson-concept {
+  font-size: 15px;
   line-height: 1.7;
   color: var(--j-text);
   margin-bottom: var(--space-3);
 }
 
-.journey-example {
+.j-idea-body .lesson-example {
   font-size: 14px;
   color: var(--j-text-muted);
   line-height: 1.6;
@@ -3706,18 +3712,33 @@ label {
   margin-bottom: var(--space-5);
 }
 
-/* Detail scene content */
-.journey-detail {
+/* ---- Scene 3: Going Deeper ---- */
+.j-deeper {
+  padding: var(--space-4) 0;
+}
+
+.j-deeper-label {
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 2px;
+  color: var(--j-text-muted);
+  margin-bottom: var(--space-5);
+  animation: contentReveal 0.5s var(--ease-out) both;
+}
+
+.j-deeper-content {
   font-size: 15px;
   line-height: 1.8;
   color: var(--j-text-secondary);
+  animation: contentReveal 0.5s var(--ease-out) 0.1s both;
 }
 
-.journey-detail p { margin-bottom: var(--space-4); }
-.journey-detail strong { color: var(--j-text); font-weight: 600; }
-.journey-detail ul { padding-left: 18px; margin-bottom: var(--space-4); }
-.journey-detail li { margin-bottom: var(--space-2); }
-.journey-detail h4 {
+.j-deeper-content p { margin-bottom: var(--space-4); }
+.j-deeper-content strong { color: var(--j-text); font-weight: 600; }
+.j-deeper-content ul { padding-left: 18px; margin-bottom: var(--space-4); }
+.j-deeper-content li { margin-bottom: var(--space-2); color: var(--j-text-secondary); }
+.j-deeper-content h4 {
   font-size: 11px;
   font-weight: 600;
   text-transform: uppercase;
@@ -3726,62 +3747,64 @@ label {
   margin: var(--space-5) 0 var(--space-2);
 }
 
-/* Source scene */
-.journey-source-center {
+/* ---- Scene 4: Source ---- */
+.j-src {
   display: flex;
   flex-direction: column;
   align-items: center;
   text-align: center;
-  justify-content: center;
-  flex: 1;
 }
 
-.journey-s-cover {
+.j-src-cover {
   width: 120px;
   height: 180px;
   object-fit: cover;
   border-radius: var(--radius-sm);
-  box-shadow: 0 8px 40px rgba(0,0,0,0.5);
+  box-shadow: 0 8px 40px rgba(0,0,0,0.4);
   margin-bottom: var(--space-6);
+  animation: contentReveal 0.5s var(--ease-out) 0.1s both;
 }
 
-.journey-s-cover-ph {
+.j-src-cover-ph {
   width: 120px;
   height: 180px;
   background: var(--bg-card-alt);
   border-radius: var(--radius-sm);
-  box-shadow: 0 8px 40px rgba(0,0,0,0.5);
+  box-shadow: 0 8px 40px rgba(0,0,0,0.4);
   margin-bottom: var(--space-6);
   display: flex;
   align-items: center;
   justify-content: center;
   padding: 14px;
-  font-family: var(--font-display);
-  font-style: normal;
   font-size: 14px;
   color: var(--j-text-muted);
+  animation: contentReveal 0.5s var(--ease-out) 0.1s both;
 }
 
-.journey-s-title {
-  font-family: var(--font-display);
-  font-size: 22px;
-  font-style: normal;
+.j-src-title {
+  font-family: var(--font-body);
+  font-size: 20px;
+  font-weight: 700;
   color: var(--j-text);
   margin-bottom: 4px;
+  letter-spacing: -0.3px;
+  animation: contentReveal 0.5s var(--ease-out) 0.2s both;
 }
 
-.journey-s-author {
+.j-src-author {
   font-size: 14px;
   color: var(--j-text-muted);
   margin-bottom: var(--space-8);
+  animation: contentReveal 0.5s var(--ease-out) 0.25s both;
 }
 
-.journey-s-actions {
+.j-src-actions {
   display: flex;
   flex-direction: column;
   gap: var(--space-3);
   width: 100%;
   max-width: 260px;
+  animation: contentReveal 0.5s var(--ease-out) 0.3s both;
 }
 
 .journey-s-btn {
@@ -3831,29 +3854,8 @@ label {
 .journey-tap-right { right: 0; width: 70%; }
 
 /* Scene enter animations */
-.journey-stage .journey-label,
-.journey-stage .journey-title,
-.journey-stage .journey-body,
-.journey-stage .journey-pullquote,
-.journey-stage .journey-concept,
-.journey-stage .journey-example,
-.journey-stage .journey-detail,
-.journey-stage .journey-source-center {
-  animation: contentReveal 0.6s var(--ease-out) both;
-}
-
-.journey-stage .journey-label { animation-delay: 0.05s; }
-.journey-stage .journey-accent-line { animation-delay: 0.15s; }
-.journey-stage .journey-title { animation-delay: 0.12s; }
-.journey-stage .journey-body { animation-delay: 0.2s; }
-.journey-stage .journey-pullquote { animation-delay: 0.25s; }
-.journey-stage .journey-concept { animation-delay: 0.15s; }
-.journey-stage .journey-example { animation-delay: 0.25s; }
-.journey-stage .journey-detail { animation-delay: 0.15s; }
-.journey-stage .journey-source-center { animation-delay: 0.1s; }
-
 @keyframes contentReveal {
-  from { opacity: 0; transform: translateY(16px); }
+  from { opacity: 0; transform: translateY(12px); }
   to { opacity: 1; transform: translateY(0); }
 }
 
