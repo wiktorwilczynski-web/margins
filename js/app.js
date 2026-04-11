@@ -111,7 +111,6 @@ const App = {
     main.innerHTML = '';
 
     const data = Storage.getData();
-    const streak = data.streak;
     const allLessons = this.getAllUnlockedLessons(data);
     const allQuotes = this.getAllQuotes(data);
     const todayStr = new Date().toISOString().slice(0, 10);
@@ -225,18 +224,6 @@ const App = {
       html += `</div>`;
     }
 
-    // ===== STREAK =====
-    if (streak.current > 0 || streak.longest > 0) {
-      html += `
-        <div class="home-streak-card">
-          <div class="home-streak-num">${streak.current}</div>
-          <div class="home-streak-detail">
-            <span class="home-streak-label">day streak</span>
-            <span class="home-streak-best">Best: ${streak.longest}</span>
-          </div>
-        </div>
-      `;
-    }
 
     // ===== SAVED =====
     const favIds = data.favorites || [];
@@ -1186,6 +1173,33 @@ Use **bold** for key terms. Be concise and sharp. No padding or pleasantries.`;
     const data = Storage.getData();
     const allLessons = this.getAllUnlockedLessons(data);
 
+    // Start screen if no session
+    if (!this.quizSession && allLessons.length >= 4) {
+      main.innerHTML = `
+        <div class="pq-start">
+          <div class="pq-start-icon">
+            <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+          </div>
+          <h2 class="pq-start-title">Test your memory</h2>
+          <p class="pq-start-body">10 questions from your reading. Match each passage to its concept.</p>
+          <div class="pq-start-stat">${allLessons.length} lessons across ${data.books.filter(b => b.lessons.length > 0).length} books</div>
+          <button class="pq-start-btn" id="pq-begin">
+            Begin
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+          </button>
+        </div>
+      `;
+      document.getElementById('pq-begin').addEventListener('click', () => {
+        this.quizSession = null;
+        const render = () => {
+          main.innerHTML = this.renderQuiz(data, allLessons);
+          this.bindQuizEvents(main, data, allLessons, render);
+        };
+        render();
+      });
+      return;
+    }
+
     const render = () => {
       main.innerHTML = this.renderQuiz(data, allLessons);
       this.bindQuizEvents(main, data, allLessons, render);
@@ -1998,24 +2012,23 @@ Rules:
 
     const q = session.questions[session.current];
     const total = session.questions.length;
-    const progressPct = Math.round((session.current / total) * 100);
     const isCorrect = q.chosen && q.chosen === q.lesson.id;
     const labels = ['A', 'B', 'C', 'D'];
 
     return `
-      <div class="quiz-wrap">
-        <div class="quiz-top-bar">
-          <span class="quiz-counter">${session.current + 1}<span class="quiz-counter-total"> / ${total}</span></span>
-          <div class="quiz-progress-bar"><div class="quiz-progress-fill" style="width:${progressPct}%"></div></div>
-          <span class="quiz-score-pill ${session.score > 0 ? 'has-score' : ''}">${session.score} ✓</span>
+      <div class="pq-question">
+        <div class="pq-counter">${session.current + 1} <span class="pq-counter-of">of ${total}</span></div>
+
+        <div class="pq-progress-track">
+          ${Array.from({length: total}, (_, i) => `<div class="pq-progress-dot ${i < session.current ? 'done' : ''} ${i === session.current ? 'current' : ''}"></div>`).join('')}
         </div>
 
-        <div class="quiz-card">
-          <div class="quiz-card-label">Name the concept</div>
-          <div class="quiz-prompt-body">${this.quizFormatBody(q.lesson.body)}</div>
+        <div class="pq-prompt">
+          <div class="pq-prompt-label">Name the concept</div>
+          <div class="pq-prompt-body">${this.quizFormatBody(q.lesson.body)}</div>
         </div>
 
-        <div class="quiz-options" id="quiz-options">
+        <div class="pq-options">
           ${q.options.map((opt, i) => {
             let state = '';
             let icon = labels[i];
@@ -2025,24 +2038,27 @@ Rules:
               else state = 'dim';
             }
             return `
-              <button class="quiz-option ${state}" data-lesson-id="${opt.id}" ${q.chosen ? 'disabled' : ''}>
-                <span class="quiz-opt-label">${icon}</span>
-                <span class="quiz-opt-title">${opt.title}</span>
+              <button class="pq-option ${state}" data-lesson-id="${opt.id}" ${q.chosen ? 'disabled' : ''}>
+                <span class="pq-opt-letter">${icon}</span>
+                <span class="pq-opt-text">${opt.title}</span>
               </button>
             `;
           }).join('')}
         </div>
 
         ${q.chosen ? `
-          <div class="quiz-feedback ${isCorrect ? 'quiz-feedback-correct' : 'quiz-feedback-wrong'}">
+          <div class="pq-feedback ${isCorrect ? 'pq-feedback-correct' : 'pq-feedback-wrong'}">
             ${isCorrect
-              ? `<strong>Correct!</strong> — from <em>${q.correctBook?.title || ''}</em>`
-              : `<strong>${q.lesson.title}</strong> — from <em>${q.correctBook?.title || ''}</em>`}
+              ? `<span class="pq-feedback-icon">✓</span> Correct — <em>${q.correctBook?.title || ''}</em>`
+              : `<span class="pq-feedback-icon">✗</span> <strong>${q.lesson.title}</strong> — <em>${q.correctBook?.title || ''}</em>`}
           </div>
-          <button class="btn btn-primary quiz-next-btn" id="quiz-next">
-            ${session.current + 1 < total ? 'Next →' : 'See results'}
+          <button class="pq-next-btn" id="quiz-next">
+            ${session.current + 1 < total ? 'Next' : 'See results'}
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
           </button>
         ` : ''}
+
+        <div class="pq-score-float">${session.score}/${session.current + (q.chosen ? 1 : 0)}</div>
       </div>
     `;
   },
@@ -2057,43 +2073,53 @@ Rules:
     if (isNewBest) localStorage.setItem('quiz_best', String(score));
     const best = isNewBest ? score : storedBest;
 
-    let emoji, message;
-    if (pct === 100)    { emoji = '🏆'; message = 'Perfect score!'; }
-    else if (pct >= 80) { emoji = '⭐'; message = 'Great memory!'; }
-    else if (pct >= 60) { emoji = '👍'; message = 'Solid effort'; }
-    else if (pct >= 40) { emoji = '📚'; message = 'Keep at it'; }
-    else                { emoji = '💪'; message = 'Practice makes perfect'; }
+    let message;
+    if (pct === 100)    message = 'Flawless';
+    else if (pct >= 80) message = 'Sharp mind';
+    else if (pct >= 60) message = 'Getting there';
+    else if (pct >= 40) message = 'Room to grow';
+    else                message = 'Keep reading';
 
     const reviewHtml = session.questions.map(q => {
       const correct = q.chosen === q.lesson.id;
       return `
-        <div class="quiz-review-item ${correct ? 'review-correct' : 'review-wrong'}">
-          <span class="review-icon">${correct ? '✓' : '✗'}</span>
-          <span class="review-text">
-            <span class="review-lesson">${q.lesson.title}</span>
-            <span class="review-book">${q.correctBook?.title || ''}</span>
-          </span>
+        <div class="pq-review-row ${correct ? 'pq-review-correct' : 'pq-review-wrong'}">
+          <span class="pq-review-icon">${correct ? '✓' : '✗'}</span>
+          <div class="pq-review-text">
+            <span class="pq-review-title">${q.lesson.title}</span>
+            <span class="pq-review-book">${q.correctBook?.title || ''}</span>
+          </div>
         </div>
       `;
     }).join('');
 
     return `
-      <div class="quiz-results">
-        <div class="quiz-results-hero">
-          <div class="quiz-results-emoji">${emoji}</div>
-          <div class="quiz-results-score">${score}<span class="quiz-results-total">/${total}</span></div>
-          <div class="quiz-results-message">${message}</div>
-          <div class="quiz-results-sub">
-            ${isNewBest
-              ? `<span class="quiz-best-badge">New best 🎉</span>`
-              : `Best: ${best}/${total}`}
+      <div class="pq-results">
+        <div class="pq-results-score-ring">
+          <svg viewBox="0 0 120 120" class="pq-ring-svg">
+            <circle cx="60" cy="60" r="52" fill="none" stroke="var(--border)" stroke-width="6"/>
+            <circle cx="60" cy="60" r="52" fill="none" stroke="var(--accent)" stroke-width="6"
+              stroke-dasharray="${Math.round(2 * Math.PI * 52)}"
+              stroke-dashoffset="${Math.round(2 * Math.PI * 52 * (1 - pct / 100))}"
+              stroke-linecap="round"
+              class="pq-ring-fill"/>
+          </svg>
+          <div class="pq-ring-inner">
+            <div class="pq-ring-score">${score}</div>
+            <div class="pq-ring-total">/ ${total}</div>
           </div>
         </div>
-        <div class="quiz-review">
-          <div class="quiz-review-label">Review</div>
-          ${reviewHtml}
-        </div>
-        <button class="btn btn-primary quiz-restart-btn" id="quiz-restart">Play again</button>
+
+        <div class="pq-results-message">${message}</div>
+        ${isNewBest ? `<div class="pq-results-best">New personal best</div>` : `<div class="pq-results-best-old">Best: ${best}/${total}</div>`}
+
+        <div class="pq-results-review-label">Review</div>
+        ${reviewHtml}
+
+        <button class="pq-restart-btn" id="quiz-restart">
+          Play again
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 4v6h6"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg>
+        </button>
       </div>
     `;
   },
@@ -2108,7 +2134,7 @@ Rules:
 
   bindQuizEvents(main, data, allLessons, render) {
     // Option tap
-    main.querySelectorAll('.quiz-option:not([disabled])').forEach(btn => {
+    main.querySelectorAll('.pq-option:not([disabled])').forEach(btn => {
       btn.addEventListener('click', () => {
         const session = this.quizSession;
         if (!session) return;
