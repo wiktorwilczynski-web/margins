@@ -3525,11 +3525,10 @@ label {
   border-radius: 2px;
   transform: scaleX(0);
   transform-origin: left;
-  transition: transform 0.4s var(--ease-out);
 }
 
-.journey-seg.done .journey-seg-fill { transform: scaleX(1); }
-.journey-seg.active .journey-seg-fill { transform: scaleX(1); transition: transform 6s linear; }
+.journey-seg.done .journey-seg-fill,
+.journey-seg.active .journey-seg-fill { transform: scaleX(1); }
 
 /* Hide old scroller — we use JS-driven horizontal paging */
 .journey-scroller { display: none; }
