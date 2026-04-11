@@ -875,17 +875,24 @@ Use **bold** for key terms. Be concise and sharp. No padding or pleasantries.`;
           }
         }
 
-        // All books grid
-        html += `<div class="lib-section-label">All books</div>`;
-        if (data.books.length === 0) {
-          html += `<div class="lib-empty-search">Your shelf is empty. Tap + to add your first book.</div>`;
-        } else {
+        // All books grid (exclude currently-reading to avoid duplicates, hide empty Loose Quotes)
+        const readingIds = new Set(reading.map(b => b.id));
+        const allBooksFiltered = data.books.filter(b => {
+          if (b.title === 'Loose Quotes' && !b.quotes.length) return false;
+          return true;
+        });
+        const completedAndOther = allBooksFiltered.filter(b => !readingIds.has(b.id));
+
+        if (completedAndOther.length > 0) {
+          html += `<div class="lib-section-label">${reading.length > 0 ? 'Completed' : 'All books'}</div>`;
           html += `<div class="lib-shelf">`;
-          for (const book of data.books) {
-            if (book.title === 'Loose Quotes' && !book.quotes.length) continue;
+          for (const book of completedAndOther) {
             html += this.renderLibBookCard(book);
           }
           html += `</div>`;
+        } else if (reading.length === 0) {
+          html += `<div class="lib-section-label">All books</div>`;
+          html += `<div class="lib-empty-search">Your shelf is empty. Tap + to add your first book.</div>`;
         }
       }
 
@@ -1105,7 +1112,49 @@ Use **bold** for key terms. Be concise and sharp. No padding or pleasantries.`;
         }
       }
 
+      // Delete book button
+      html += `
+        <div class="hub-delete-section">
+          <button class="hub-delete-btn" id="hub-delete-book">Delete this book</button>
+        </div>
+      `;
+
       content.innerHTML = html;
+
+      // Delete book
+      document.getElementById('hub-delete-book')?.addEventListener('click', () => {
+        // Show confirmation popup
+        const overlay = document.createElement('div');
+        overlay.className = 'confirm-overlay';
+        overlay.innerHTML = `
+          <div class="confirm-dialog">
+            <h3>Delete "${freshBook.title}"?</h3>
+            <p>This will remove the book and all its lessons permanently. This can't be undone.</p>
+            <div class="confirm-actions">
+              <button class="confirm-btn confirm-cancel" id="confirm-cancel">Cancel</button>
+              <button class="confirm-btn confirm-delete" id="confirm-delete">Delete</button>
+            </div>
+          </div>
+        `;
+        document.body.appendChild(overlay);
+
+        document.getElementById('confirm-cancel').addEventListener('click', () => overlay.remove());
+        overlay.addEventListener('click', (e) => { if (e.target === overlay) overlay.remove(); });
+
+        document.getElementById('confirm-delete').addEventListener('click', () => {
+          Storage.updateData(d => {
+            d.books = d.books.filter(b => b.id !== bookId);
+            if (d.favorites) d.favorites = d.favorites.filter(fid => {
+              return !freshBook.lessons.some(l => l.id === fid);
+            });
+          });
+          overlay.remove();
+          closeHub();
+          this.showToast('Book deleted');
+          if (this.currentTab === 'library') this.renderLibrary();
+          if (this.currentTab === 'today') this.renderToday();
+        });
+      });
 
       // Bind hub lesson learn-more and follow-up
       content.querySelectorAll('.learn-more-btn').forEach(btn => {
@@ -1182,6 +1231,7 @@ Use **bold** for key terms. Be concise and sharp. No padding or pleasantries.`;
 
     // Start screen if no session
     if (!this.quizSession && allLessons.length >= 4) {
+      const bestScore = parseInt(localStorage.getItem('quiz_best') || '0');
       main.innerHTML = `
         <div class="pq-start">
           <div class="pq-start-icon">
@@ -1190,6 +1240,7 @@ Use **bold** for key terms. Be concise and sharp. No padding or pleasantries.`;
           <h2 class="pq-start-title">Test your memory</h2>
           <p class="pq-start-body">10 questions from your reading. Match each passage to its concept.</p>
           <div class="pq-start-stat">${allLessons.length} lessons across ${data.books.filter(b => b.lessons.length > 0).length} books</div>
+          ${bestScore > 0 ? `<div class="pq-start-best">Your best: ${bestScore}/10</div>` : ''}
           <button class="pq-start-btn" id="pq-begin">
             Begin
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
