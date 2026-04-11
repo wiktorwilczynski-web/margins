@@ -3340,7 +3340,7 @@ label {
   position: fixed;
   inset: 0;
   z-index: 250;
-  background: #0A0A0F;
+  background: var(--j-bg, #0A0A0F);
   overflow: hidden;
   animation: journeyOpen 0.5s var(--ease-out) both;
 }
@@ -3369,7 +3369,7 @@ label {
 .journey-close {
   background: none;
   border: none;
-  color: rgba(255,255,255,0.6);
+  color: var(--j-close);
   font-size: 24px;
   line-height: 1;
   cursor: pointer;
@@ -3378,7 +3378,7 @@ label {
   transition: color 0.15s;
 }
 
-.journey-close:active { color: #fff; }
+.journey-close:active { color: var(--j-text); }
 
 /* Segmented progress bars (Stories-style) */
 .journey-progress { display: none; } /* hide old single bar */
@@ -3393,7 +3393,7 @@ label {
 .journey-seg {
   flex: 1;
   height: 3px;
-  background: rgba(255,255,255,0.15);
+  background: var(--j-seg-bg);
   border-radius: 2px;
   overflow: hidden;
   position: relative;
@@ -3402,7 +3402,7 @@ label {
 .journey-seg-fill {
   position: absolute;
   inset: 0;
-  background: rgba(255,255,255,0.9);
+  background: var(--j-seg-fill);
   border-radius: 2px;
   transform: scaleX(0);
   transform-origin: left;
@@ -3428,18 +3428,74 @@ label {
   -webkit-overflow-scrolling: touch;
 }
 
-/* Gradient backgrounds per scene */
+/* Journey theme variables */
+.journey-modal {
+  --j-bg: #0A0A0F;
+  --j-text: #fff;
+  --j-text-secondary: rgba(255,255,255,0.65);
+  --j-text-muted: rgba(255,255,255,0.35);
+  --j-text-faint: rgba(255,255,255,0.15);
+  --j-border: rgba(255,255,255,0.1);
+  --j-watermark: rgba(255,255,255,0.025);
+  --j-close: rgba(255,255,255,0.6);
+  --j-seg-bg: rgba(255,255,255,0.15);
+  --j-seg-fill: rgba(255,255,255,0.9);
+  --j-btn-primary-bg: #fff;
+  --j-btn-primary-color: #0A0A0F;
+  --j-btn-secondary-bg: rgba(255,255,255,0.08);
+  --j-btn-secondary-color: rgba(255,255,255,0.7);
+  --j-btn-secondary-border: rgba(255,255,255,0.1);
+}
+
+/* Light mode journey */
+:root:not([data-theme="dark"]) .journey-modal {
+  --j-bg: #F5F4F0;
+  --j-text: #1A1A1A;
+  --j-text-secondary: rgba(26,26,26,0.6);
+  --j-text-muted: rgba(26,26,26,0.35);
+  --j-text-faint: rgba(26,26,26,0.12);
+  --j-border: rgba(26,26,26,0.1);
+  --j-watermark: rgba(26,26,26,0.04);
+  --j-close: rgba(26,26,26,0.4);
+  --j-seg-bg: rgba(26,26,26,0.12);
+  --j-seg-fill: var(--accent);
+  --j-btn-primary-bg: var(--accent);
+  --j-btn-primary-color: #fff;
+  --j-btn-secondary-bg: rgba(26,26,26,0.04);
+  --j-btn-secondary-color: rgba(26,26,26,0.65);
+  --j-btn-secondary-border: rgba(26,26,26,0.1);
+}
+
+/* Gradient backgrounds per scene — dark */
+[data-theme="dark"] .journey-stage[data-scene="hook"],
 .journey-stage[data-scene="hook"] {
   background: linear-gradient(160deg, #1a1040 0%, #0A0A0F 40%, #0d1520 100%);
 }
+[data-theme="dark"] .journey-stage[data-scene="concept"],
 .journey-stage[data-scene="concept"] {
   background: linear-gradient(160deg, #0d1a1a 0%, #0A0A0F 40%, #1a1020 100%);
 }
+[data-theme="dark"] .journey-stage[data-scene="detail"],
 .journey-stage[data-scene="detail"] {
   background: linear-gradient(160deg, #1a1510 0%, #0A0A0F 40%, #0d1020 100%);
 }
+[data-theme="dark"] .journey-stage[data-scene="source"],
 .journey-stage[data-scene="source"] {
   background: linear-gradient(160deg, #101020 0%, #0A0A0F 50%, #0A0A0F 100%);
+}
+
+/* Gradient backgrounds per scene — light */
+:root:not([data-theme="dark"]) .journey-stage[data-scene="hook"] {
+  background: linear-gradient(160deg, #E8E4F8 0%, #F5F4F0 40%, #E4ECF0 100%);
+}
+:root:not([data-theme="dark"]) .journey-stage[data-scene="concept"] {
+  background: linear-gradient(160deg, #E0EFEF 0%, #F5F4F0 40%, #F0E4EF 100%);
+}
+:root:not([data-theme="dark"]) .journey-stage[data-scene="detail"] {
+  background: linear-gradient(160deg, #F0EBE0 0%, #F5F4F0 40%, #E4E6F0 100%);
+}
+:root:not([data-theme="dark"]) .journey-stage[data-scene="source"] {
+  background: linear-gradient(160deg, #E8E8F0 0%, #F5F4F0 50%, #F5F4F0 100%);
 }
 
 /* Large translucent scene number watermark */
@@ -3450,19 +3506,18 @@ label {
   font-family: var(--font-display);
   font-size: 200px;
   font-style: italic;
-  color: rgba(255,255,255,0.025);
+  color: var(--j-watermark);
   line-height: 1;
   pointer-events: none;
   user-select: none;
 }
 
-/* Scene content — all text is light on dark */
 .journey-label {
   font-size: 10px;
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 2px;
-  color: rgba(255,255,255,0.35);
+  color: var(--j-text-muted);
   margin-bottom: var(--space-4);
 }
 
@@ -3472,7 +3527,7 @@ label {
   font-weight: 400;
   font-style: italic;
   line-height: 1.15;
-  color: #fff;
+  color: var(--j-text);
   margin-bottom: var(--space-5);
   letter-spacing: -0.5px;
 }
@@ -3480,12 +3535,12 @@ label {
 .journey-body {
   font-size: 16px;
   line-height: 1.75;
-  color: rgba(255,255,255,0.65);
+  color: var(--j-text-secondary);
   max-width: 380px;
 }
 
 .journey-body strong {
-  color: rgba(255,255,255,0.9);
+  color: var(--j-text);
   font-weight: 600;
 }
 
@@ -3510,7 +3565,7 @@ label {
   font-size: 24px;
   font-style: italic;
   line-height: 1.35;
-  color: #fff;
+  color: var(--j-text);
   margin: var(--space-6) 0;
   padding-left: var(--space-5);
   border-left: 3px solid var(--accent);
@@ -3520,16 +3575,16 @@ label {
 .journey-concept {
   font-size: 16px;
   line-height: 1.7;
-  color: rgba(255,255,255,0.85);
+  color: var(--j-text);
   margin-bottom: var(--space-3);
 }
 
 .journey-example {
   font-size: 14px;
-  color: rgba(255,255,255,0.4);
+  color: var(--j-text-muted);
   line-height: 1.6;
   padding-left: var(--space-4);
-  border-left: 2px solid rgba(255,255,255,0.1);
+  border-left: 2px solid var(--j-border);
   margin-bottom: var(--space-5);
 }
 
@@ -3537,11 +3592,11 @@ label {
 .journey-detail {
   font-size: 15px;
   line-height: 1.8;
-  color: rgba(255,255,255,0.6);
+  color: var(--j-text-secondary);
 }
 
 .journey-detail p { margin-bottom: var(--space-4); }
-.journey-detail strong { color: rgba(255,255,255,0.9); font-weight: 600; }
+.journey-detail strong { color: var(--j-text); font-weight: 600; }
 .journey-detail ul { padding-left: 18px; margin-bottom: var(--space-4); }
 .journey-detail li { margin-bottom: var(--space-2); }
 .journey-detail h4 {
@@ -3575,7 +3630,7 @@ label {
 .journey-s-cover-ph {
   width: 120px;
   height: 180px;
-  background: #1E1E22;
+  background: var(--bg-card-alt);
   border-radius: var(--radius-sm);
   box-shadow: 0 8px 40px rgba(0,0,0,0.5);
   margin-bottom: var(--space-6);
@@ -3586,20 +3641,20 @@ label {
   font-family: var(--font-display);
   font-style: italic;
   font-size: 14px;
-  color: rgba(255,255,255,0.4);
+  color: var(--j-text-muted);
 }
 
 .journey-s-title {
   font-family: var(--font-display);
   font-size: 22px;
   font-style: italic;
-  color: #fff;
+  color: var(--j-text);
   margin-bottom: 4px;
 }
 
 .journey-s-author {
   font-size: 14px;
-  color: rgba(255,255,255,0.4);
+  color: var(--j-text-muted);
   margin-bottom: var(--space-8);
 }
 
@@ -3630,17 +3685,17 @@ label {
 .journey-s-btn:active { transform: scale(0.95); }
 
 .journey-s-btn.primary {
-  background: #fff;
-  color: #0A0A0F;
+  background: var(--j-btn-primary-bg);
+  color: var(--j-btn-primary-color);
 }
 
 .journey-s-btn.secondary {
-  background: rgba(255,255,255,0.08);
-  color: rgba(255,255,255,0.7);
-  border: 1px solid rgba(255,255,255,0.1);
+  background: var(--j-btn-secondary-bg);
+  color: var(--j-btn-secondary-color);
+  border: 1px solid var(--j-btn-secondary-border);
 }
 
-.journey-s-btn.secondary:active { background: rgba(255,255,255,0.14); }
+.journey-s-btn.secondary:active { opacity: 0.7; }
 
 /* Tap zones for Stories-style navigation */
 .journey-tap-left,
