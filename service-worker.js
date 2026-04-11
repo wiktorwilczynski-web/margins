@@ -1,4 +1,4 @@
-const CACHE_NAME = 'margins-v36';
+const CACHE_NAME = 'margins-v37';
 const ASSETS = [
   '/css/styles.css',
   '/js/app.js',
