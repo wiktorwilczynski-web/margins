@@ -70,6 +70,13 @@ const App = {
       settingsPage.classList.remove('open');
       return;
     }
+    // Journey modal
+    const journeyModal = document.getElementById('journey-modal');
+    if (journeyModal && !journeyModal.classList.contains('hidden')) {
+      journeyModal.classList.add('hidden');
+      document.body.style.overflow = '';
+      return;
+    }
     const modals = ['chat-modal', 'book-hub-modal', 'add-book-modal'];
     for (const id of modals) {
       const el = document.getElementById(id);
@@ -182,7 +189,7 @@ const App = {
         html += `
           <div class="lesson-slide">
             <div class="dash-lesson-card">
-              <div class="dash-lesson-title lesson-title-link" data-book-id="${book?.id}">${lesson.title}</div>
+              <div class="dash-lesson-title lesson-title-link" data-book-id="${book?.id}" data-lesson-id="${lesson.id}">${lesson.title}</div>
               <div class="dash-lesson-body">${this.formatLessonBody(lesson.body)}</div>
               <div class="dash-lesson-source">
                 ${book && book.coverUrl ? `<img class="lesson-source-thumb" src="${book.coverUrl}" alt="">` : ''}
@@ -291,11 +298,11 @@ const App = {
     // Preload covers into browser cache
     data.books.forEach(b => { if (b.coverUrl) { const img = new Image(); img.src = b.coverUrl; } });
 
-    // Lesson title → open book hub
+    // Lesson title → open lesson journey
     main.querySelectorAll('.lesson-title-link').forEach(el => {
       el.addEventListener('click', () => {
-        const bookId = el.dataset.bookId;
-        if (bookId) this.openBookHub(bookId);
+        const lessonId = el.dataset.lessonId;
+        if (lessonId) this.openLessonJourney(lessonId);
       });
     });
 
@@ -463,6 +470,118 @@ const App = {
 
     // Re-position dots now that the card is taller
     requestAnimationFrame(() => { if (this._updateDotsPosition) this._updateDotsPosition(); });
+  },
+
+  // ===== LESSON JOURNEY =====
+  openLessonJourney(lessonId) {
+    const data = Storage.getData();
+    let lesson, book;
+    for (const b of data.books) {
+      const l = b.lessons.find(x => x.id === lessonId);
+      if (l) { lesson = l; book = b; break; }
+    }
+    if (!lesson) return;
+
+    const modal = document.getElementById('journey-modal');
+    const scroller = document.getElementById('journey-scroller');
+    const progressFill = document.getElementById('journey-progress-fill');
+
+    // Build the first sentence as hook body
+    const sentences = lesson.body.match(/[^.!?]+[.!?]+/g) || [lesson.body];
+    const hookBody = sentences[0]?.trim() || lesson.body;
+
+    // Build scenes
+    let scenes = '';
+
+    // Scene 1: Hook
+    scenes += `
+      <div class="journey-scene">
+        <div class="journey-hook-label">Lesson</div>
+        <h1 class="journey-hook-title">${lesson.title}</h1>
+        <div class="journey-hook-body">${hookBody}</div>
+        <div class="journey-scroll-hint">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M19 12l-7 7-7-7"/></svg>
+          Scroll to explore
+        </div>
+      </div>
+    `;
+
+    // Scene 2: Deep Dive (full body)
+    scenes += `
+      <div class="journey-scene">
+        <div class="journey-dive-label">The idea</div>
+        <div class="journey-dive-body">${this.formatLessonBody(lesson.body)}</div>
+      </div>
+    `;
+
+    // Scene 3: Detail (if available)
+    const totalScenes = lesson.detail ? 4 : 3;
+    if (lesson.detail) {
+      scenes += `
+        <div class="journey-scene">
+          <div class="journey-detail-label">Going deeper</div>
+          <div class="journey-detail-content">${this.parseMarkdown(lesson.detail)}</div>
+        </div>
+      `;
+    }
+
+    // Scene 4: Source
+    const coverHtml = book.coverUrl
+      ? `<img class="journey-source-cover" src="${book.coverUrl}" alt="">`
+      : `<div class="journey-source-cover-ph">${book.title}</div>`;
+
+    scenes += `
+      <div class="journey-scene journey-source-scene">
+        ${coverHtml}
+        <div class="journey-source-title">${book.title}</div>
+        <div class="journey-source-author">${book.author}</div>
+        <div class="journey-source-actions">
+          <button class="journey-action-btn primary" id="journey-explore-book" data-book-id="${book.id}">Explore this book</button>
+          <button class="journey-action-btn ${this.isFavorite(lesson.id) ? 'is-fav' : ''}" id="journey-fav" data-lesson-id="${lesson.id}">${this.isFavorite(lesson.id) ? '♥ Saved' : '♡ Save this lesson'}</button>
+        </div>
+      </div>
+    `;
+
+    scroller.innerHTML = scenes;
+    progressFill.style.width = `${(1 / totalScenes) * 100}%`;
+    modal.classList.remove('hidden');
+    document.body.style.overflow = 'hidden';
+    this.pushNav();
+
+    // Scroll progress
+    scroller.addEventListener('scroll', () => {
+      const scrollPct = scroller.scrollTop / (scroller.scrollHeight - scroller.clientHeight);
+      const sceneIdx = Math.min(totalScenes, Math.round(scrollPct * totalScenes) + 1);
+      progressFill.style.width = `${(sceneIdx / totalScenes) * 100}%`;
+    }, { passive: true });
+
+    // Close
+    const closeJourney = () => {
+      modal.classList.add('hidden');
+      document.body.style.overflow = '';
+      if (history.state && history.state.layer) history.back();
+    };
+    document.getElementById('journey-close').onclick = closeJourney;
+
+    // Explore book
+    const exploreBtn = document.getElementById('journey-explore-book');
+    if (exploreBtn) {
+      exploreBtn.addEventListener('click', () => {
+        closeJourney();
+        setTimeout(() => this.openBookHub(exploreBtn.dataset.bookId), 100);
+      });
+    }
+
+    // Favorite
+    const favBtn = document.getElementById('journey-fav');
+    if (favBtn) {
+      favBtn.addEventListener('click', () => {
+        this.toggleFavorite(favBtn.dataset.lessonId);
+        const isFav = this.isFavorite(favBtn.dataset.lessonId);
+        favBtn.textContent = isFav ? '♥ Saved' : '♡ Save this lesson';
+        favBtn.classList.toggle('is-fav', isFav);
+      });
+    }
   },
 
   async generateMissingDetails() {

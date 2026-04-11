@@ -2367,6 +2367,294 @@ label {
   line-height: 1.4;
 }
 
+/* ===== Lesson Journey ===== */
+.journey-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 250;
+  background: var(--bg);
+  display: flex;
+  flex-direction: column;
+  transition: opacity var(--duration-slow) var(--ease-out);
+}
+
+.journey-modal.hidden {
+  display: none;
+}
+
+.journey-chrome {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  padding: var(--space-2) var(--space-5);
+  padding-top: calc(var(--space-2) + var(--safe-top));
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  z-index: 10;
+  background: linear-gradient(to bottom, var(--bg) 60%, transparent);
+}
+
+.journey-close {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  font-size: 28px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 4px;
+  transition: color var(--duration-fast) ease;
+  flex-shrink: 0;
+}
+
+.journey-close:active {
+  color: var(--text);
+}
+
+.journey-progress {
+  flex: 1;
+  height: 3px;
+  background: var(--border-strong);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.journey-progress-fill {
+  height: 100%;
+  background: var(--accent);
+  border-radius: 2px;
+  transition: width 0.5s var(--ease-out);
+  width: 0%;
+}
+
+.journey-scroller {
+  flex: 1;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  scroll-snap-type: y mandatory;
+  padding-top: calc(40px + var(--safe-top));
+}
+
+.journey-scene {
+  min-height: 100dvh;
+  scroll-snap-align: start;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: var(--space-12) var(--space-6) var(--space-10);
+  animation: journeyFadeIn 0.6s var(--ease-out) both;
+}
+
+.journey-scene:nth-child(2) { animation-delay: 0.08s; }
+.journey-scene:nth-child(3) { animation-delay: 0.16s; }
+.journey-scene:nth-child(4) { animation-delay: 0.24s; }
+
+@keyframes journeyFadeIn {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* Scene 1: Hook */
+.journey-hook-label {
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+  color: var(--accent);
+  margin-bottom: var(--space-4);
+}
+
+.journey-hook-title {
+  font-family: var(--font-display);
+  font-size: 32px;
+  font-weight: 400;
+  font-style: italic;
+  line-height: 1.2;
+  color: var(--text);
+  margin-bottom: var(--space-6);
+  letter-spacing: -0.5px;
+}
+
+.journey-hook-body {
+  font-size: 16px;
+  line-height: 1.7;
+  color: var(--text-secondary);
+  max-width: 360px;
+}
+
+.journey-scroll-hint {
+  margin-top: var(--space-10);
+  font-size: 11px;
+  color: var(--text-muted);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  animation: gentleBounce 2s ease-in-out infinite;
+}
+
+@keyframes gentleBounce {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(4px); }
+}
+
+/* Scene 2: Deep dive */
+.journey-dive-label {
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+  color: var(--accent);
+  margin-bottom: var(--space-4);
+}
+
+.journey-dive-body {
+  font-size: 15px;
+  line-height: 1.7;
+  color: var(--text);
+}
+
+.journey-dive-body .lesson-concept {
+  font-size: 15px;
+  line-height: 1.7;
+  color: var(--text);
+  margin-bottom: var(--space-3);
+}
+
+.journey-dive-body .lesson-example {
+  font-size: 14px;
+  color: var(--text-muted);
+  line-height: 1.6;
+  padding-left: var(--space-4);
+  border-left: 2px solid var(--border-strong);
+  margin-bottom: var(--space-4);
+}
+
+/* Scene 3: Detail */
+.journey-detail-label {
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+  color: var(--accent);
+  margin-bottom: var(--space-4);
+}
+
+.journey-detail-content {
+  font-size: 15px;
+  line-height: 1.75;
+  color: var(--text-secondary);
+}
+
+.journey-detail-content p {
+  margin-bottom: var(--space-4);
+}
+
+.journey-detail-content strong {
+  color: var(--text);
+  font-weight: 600;
+}
+
+.journey-detail-content ul {
+  padding-left: 18px;
+  margin-bottom: var(--space-4);
+}
+
+.journey-detail-content li {
+  margin-bottom: var(--space-2);
+}
+
+.journey-detail-content h4 {
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--accent);
+  margin-bottom: var(--space-2);
+}
+
+/* Scene 4: Source */
+.journey-source-scene {
+  align-items: center;
+  text-align: center;
+}
+
+.journey-source-cover {
+  width: 100px;
+  height: 150px;
+  object-fit: cover;
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow-lg);
+  margin-bottom: var(--space-5);
+}
+
+.journey-source-cover-ph {
+  width: 100px;
+  height: 150px;
+  background: var(--bg-card-alt);
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow-lg);
+  margin-bottom: var(--space-5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 12px;
+  font-family: var(--font-display);
+  font-style: italic;
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+.journey-source-title {
+  font-family: var(--font-display);
+  font-size: 20px;
+  font-style: italic;
+  color: var(--text);
+  margin-bottom: var(--space-1);
+}
+
+.journey-source-author {
+  font-size: 14px;
+  color: var(--text-muted);
+  margin-bottom: var(--space-6);
+}
+
+.journey-source-actions {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  width: 100%;
+  max-width: 280px;
+}
+
+.journey-action-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 12px 20px;
+  border-radius: var(--radius-full);
+  border: 1px solid var(--border);
+  background: var(--bg-card);
+  color: var(--text);
+  font-family: var(--font-body);
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all var(--duration-fast) var(--ease-in-out);
+  width: 100%;
+}
+
+.journey-action-btn:active {
+  transform: scale(0.97);
+}
+
+.journey-action-btn.primary {
+  background: var(--accent);
+  color: #fff;
+  border-color: var(--accent);
+}
+
 /* Legacy styles kept for compatibility */
 .connection-pair { display: flex; flex-direction: column; gap: var(--space-3); margin-bottom: var(--space-4); }
 .connection-lesson { padding: var(--space-4); background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-sm); }
