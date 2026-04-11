@@ -309,25 +309,25 @@ const App = {
       });
     }
 
-    // Carousel scroll → dots
+    // Carousel scroll → resize + dots
     const carousel = document.getElementById('lesson-carousel');
     if (carousel) {
-      const updateDotsPosition = () => {
+      const updateCarouselHeight = () => {
         const dots = document.getElementById('carousel-dots');
-        if (!dots) return;
         const idx = Math.round(carousel.scrollLeft / carousel.offsetWidth);
         const slides = carousel.querySelectorAll('.lesson-slide');
         const activeSlide = slides[idx] || slides[0];
         if (activeSlide) {
           const card = activeSlide.querySelector('.dash-lesson-card');
           if (card) {
-            dots.style.top = (card.offsetHeight + 8) + 'px';
+            carousel.style.height = card.offsetHeight + 'px';
+            if (dots) dots.style.top = (card.offsetHeight + 8) + 'px';
           }
         }
       };
 
-      // Expose so handleLearnMore can trigger a re-position after expansion
-      this._updateDotsPosition = updateDotsPosition;
+      // Expose so handleLearnMore can trigger resize after expansion
+      this._updateDotsPosition = updateCarouselHeight;
 
       let scrollTimer;
       carousel.addEventListener('scroll', () => {
@@ -337,21 +337,17 @@ const App = {
           main.querySelectorAll('.carousel-dot').forEach((dot, i) => {
             dot.classList.toggle('active', i === idx);
           });
-          // After swipe settles, close any open Learn More and unlock slide heights
+          // After swipe settles, close any open Learn More
           const openSections = main.querySelectorAll('.learn-more-section:not(.hidden)');
           if (openSections.length > 0) {
             openSections.forEach(s => { s.classList.add('hidden'); s.innerHTML = ''; });
-            carousel.querySelectorAll('.lesson-slide').forEach(s => {
-              s.style.height = '';
-              s.style.overflow = '';
-            });
           }
-          updateDotsPosition();
+          updateCarouselHeight();
         }, 50);
       }, { passive: true });
 
-      // Set initial dot position after render
-      requestAnimationFrame(() => requestAnimationFrame(updateDotsPosition));
+      // Set initial height after render
+      requestAnimationFrame(() => requestAnimationFrame(updateCarouselHeight));
     }
 
     // Book cards → hub
@@ -407,24 +403,8 @@ const App = {
     if (!section.classList.contains('hidden')) {
       section.classList.add('hidden');
       section.innerHTML = '';
-      if (carousel) carousel.querySelectorAll('.lesson-slide').forEach(s => {
-        s.style.height = '';
-        s.style.overflow = '';
-      });
       requestAnimationFrame(() => { if (this._updateDotsPosition) this._updateDotsPosition(); });
       return;
-    }
-
-    // Lock adjacent slides at their current pixel height before the active card expands,
-    // so they don't grow with the carousel and show white space during swipe
-    if (carousel) {
-      const activeIdx = Math.round(carousel.scrollLeft / carousel.offsetWidth);
-      carousel.querySelectorAll('.lesson-slide').forEach((slide, i) => {
-        if (i !== activeIdx) {
-          slide.style.height = slide.offsetHeight + 'px';
-          slide.style.overflow = 'hidden';
-        }
-      });
     }
 
     section.classList.remove('hidden');
