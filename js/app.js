@@ -26,6 +26,9 @@ const App = {
     this.renderTab('today');
     this.addToast();
 
+    // Auto-backup once per day
+    Storage.dailyBackup();
+
     // One-time cover refresh to ensure English editions
     const coverVer = localStorage.getItem('covers_version');
     if (coverVer !== '4') {
@@ -1712,13 +1715,6 @@ Use **bold** for key terms. Be concise and sharp. No padding or pleasantries.`;
       }
     });
 
-    // Reset
-    document.getElementById('reset-app').addEventListener('click', () => {
-      if (confirm('Are you sure? This will delete all your data.')) {
-        Storage.reset();
-        location.reload();
-      }
-    });
   },
 
   applyTheme() {

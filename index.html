@@ -18,7 +18,7 @@
   <script>
     // Cache buster: force reload when new version is deployed
     (function() {
-      var v = 60;
+      var v = 61;
       var stored = localStorage.getItem('margins_app_version');
       if (stored && parseInt(stored) >= v) return;
       // New version — nuke all caches and reload
@@ -146,9 +146,6 @@
           </div>
           <div class="setting-group">
             <button id="sign-out" class="btn btn-sm">Sign Out</button>
-          </div>
-          <div class="setting-group">
-            <button id="reset-app" class="btn btn-sm btn-danger">Reset App</button>
           </div>
         </div>
         <!-- API Keys sub-pane -->
