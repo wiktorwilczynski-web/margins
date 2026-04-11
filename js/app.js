@@ -381,13 +381,21 @@ const App = {
 
   formatLessonBody(body) {
     // Split into sentences
-    const sentences = (body.match(/[^.!?]+[.!?]+/g) || [body]).map(s => s.trim()).filter(Boolean);
-    if (sentences.length <= 2) return `<p class="lesson-para">${body}</p>`;
-    // Group into two balanced paragraphs
-    const mid = Math.ceil(sentences.length / 2);
-    const first = sentences.slice(0, mid).join(' ');
-    const second = sentences.slice(mid).join(' ');
-    return `<p class="lesson-para">${first}</p><p class="lesson-para">${second}</p>`;
+    const sentences = body.match(/[^.!?]+[.!?]+/g) || [body];
+    if (sentences.length <= 1) return body;
+
+    // Pair: concept (normal text) → example (indented, muted)
+    let html = '';
+    for (let i = 0; i < sentences.length; i++) {
+      const s = sentences[i].trim();
+      if (!s) continue;
+      if (i % 2 === 0) {
+        html += `<div class="lesson-concept">${s}</div>`;
+      } else {
+        html += `<div class="lesson-example">${s}</div>`;
+      }
+    }
+    return html;
   },
 
   handleLearnMore(lessonId, bookId) {

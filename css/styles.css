@@ -764,18 +764,29 @@ label {
 .dash-lesson-body {
   font-family: var(--sans);
   font-size: 14px;
-  line-height: 1.58;
+  line-height: 1.6;
   color: var(--text-secondary);
   margin-bottom: 10px;
-  flex: 1;
 }
 
-.dash-lesson-body .lesson-para {
-  margin: 0 0 8px;
-  color: var(--text-secondary);
+.dash-lesson-body .lesson-concept {
+  color: var(--text);
+  font-size: 15px;
+  line-height: 1.5;
+  margin-bottom: 6px;
+  font-weight: 500;
 }
 
-.dash-lesson-body .lesson-para:last-child {
+.dash-lesson-body .lesson-example {
+  font-size: 13px;
+  color: var(--text-muted);
+  line-height: 1.5;
+  padding-left: 12px;
+  border-left: 2px solid var(--border);
+  margin-bottom: 10px;
+}
+
+.dash-lesson-body .lesson-example:last-child {
   margin-bottom: 0;
 }
 
