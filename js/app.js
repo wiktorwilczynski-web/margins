@@ -361,114 +361,190 @@ const App = {
     if (!lesson) return;
 
     const modal = document.getElementById('journey-modal');
-    const scroller = document.getElementById('journey-scroller');
-    const progressFill = document.getElementById('journey-progress-fill');
+    const chrome = document.getElementById('journey-chrome');
+    const viewport = document.getElementById('journey-viewport');
 
-    // Build the first sentence as hook body
+    // Parse body
     const sentences = lesson.body.match(/[^.!?]+[.!?]+/g) || [lesson.body];
-    const hookBody = sentences[0]?.trim() || lesson.body;
+    const hookSentence = sentences[0]?.trim() || lesson.body;
 
-    // Build scenes
-    let scenes = '';
+    // Format body for concept scene
+    const bodyHtml = sentences.map((s, i) => {
+      const txt = s.trim();
+      if (!txt) return '';
+      return i % 2 === 0
+        ? `<div class="journey-concept">${txt}</div>`
+        : `<div class="journey-example">${txt}</div>`;
+    }).join('');
+
+    // Pull quote: pick the punchiest sentence (longest under 120 chars)
+    const pullQuote = sentences
+      .map(s => s.trim())
+      .filter(s => s.length > 30 && s.length < 120)
+      .sort((a, b) => b.length - a.length)[0] || hookSentence;
+
+    // Build scene data
+    const scenes = [];
 
     // Scene 1: Hook
-    scenes += `
-      <div class="journey-scene">
-        <div class="journey-hook-label">Lesson</div>
-        <h1 class="journey-hook-title">${lesson.title}</h1>
-        <div class="journey-hook-body">${hookBody}</div>
-        <div class="journey-scroll-hint">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M19 12l-7 7-7-7"/></svg>
-          Scroll to explore
-        </div>
-      </div>
-    `;
+    scenes.push({
+      type: 'hook',
+      html: `
+        <div class="journey-watermark">01</div>
+        <div class="journey-label">Lesson</div>
+        <div class="journey-accent-line"></div>
+        <h1 class="journey-title">${lesson.title}</h1>
+        <div class="journey-body">${hookSentence}</div>
+      `
+    });
 
-    // Scene 2: Deep Dive (full body)
-    scenes += `
-      <div class="journey-scene">
-        <div class="journey-dive-label">The idea</div>
-        <div class="journey-dive-body">${this.formatLessonBody(lesson.body)}</div>
-      </div>
-    `;
+    // Scene 2: Concept — full body with pull quote
+    scenes.push({
+      type: 'concept',
+      html: `
+        <div class="journey-watermark">02</div>
+        <div class="journey-label">The idea</div>
+        <div class="journey-accent-line"></div>
+        <div class="journey-pullquote">${pullQuote}</div>
+        ${bodyHtml}
+      `
+    });
 
     // Scene 3: Detail (if available)
-    const totalScenes = lesson.detail ? 4 : 3;
     if (lesson.detail) {
-      scenes += `
-        <div class="journey-scene">
-          <div class="journey-detail-label">Going deeper</div>
-          <div class="journey-detail-content">${this.parseMarkdown(lesson.detail)}</div>
-        </div>
-      `;
+      scenes.push({
+        type: 'detail',
+        html: `
+          <div class="journey-watermark">03</div>
+          <div class="journey-label">Going deeper</div>
+          <div class="journey-accent-line"></div>
+          <div class="journey-detail">${this.parseMarkdown(lesson.detail)}</div>
+        `
+      });
     }
 
     // Scene 4: Source
     const coverHtml = book.coverUrl
-      ? `<img class="journey-source-cover" src="${book.coverUrl}" alt="">`
-      : `<div class="journey-source-cover-ph">${book.title}</div>`;
+      ? `<img class="journey-s-cover" src="${book.coverUrl}" alt="">`
+      : `<div class="journey-s-cover-ph">${book.title}</div>`;
+    const sceneNum = scenes.length + 1;
 
-    scenes += `
-      <div class="journey-scene journey-source-scene">
-        ${coverHtml}
-        <div class="journey-source-title">${book.title}</div>
-        <div class="journey-source-author">${book.author}</div>
-        <div class="journey-source-actions">
-          <button class="journey-action-btn primary" id="journey-explore-book" data-book-id="${book.id}">Explore this book</button>
-          <button class="journey-action-btn ${this.isFavorite(lesson.id) ? 'is-fav' : ''}" id="journey-fav" data-lesson-id="${lesson.id}">${this.isFavorite(lesson.id) ? '♥ Saved' : '♡ Save this lesson'}</button>
-          <button class="journey-action-btn" id="journey-share">Share as image</button>
+    scenes.push({
+      type: 'source',
+      html: `
+        <div class="journey-watermark">0${sceneNum}</div>
+        <div class="journey-source-center">
+          ${coverHtml}
+          <div class="journey-s-title">${book.title}</div>
+          <div class="journey-s-author">${book.author}</div>
+          <div class="journey-s-actions">
+            <button class="journey-s-btn primary" id="j-explore" data-book-id="${book.id}">Explore this book</button>
+            <button class="journey-s-btn secondary" id="j-fav" data-lesson-id="${lesson.id}">${this.isFavorite(lesson.id) ? '♥ Saved' : '♡ Save lesson'}</button>
+            <button class="journey-s-btn secondary" id="j-share">Share as image</button>
+          </div>
         </div>
+      `
+    });
+
+    const total = scenes.length;
+    let current = 0;
+
+    // Build segmented progress bar
+    chrome.innerHTML = `
+      <button class="journey-close" id="journey-close">&times;</button>
+      <div class="journey-segments">
+        ${scenes.map((_, i) => `<div class="journey-seg ${i === 0 ? 'active' : ''}" data-idx="${i}"><div class="journey-seg-fill"></div></div>`).join('')}
       </div>
     `;
 
-    scroller.innerHTML = scenes;
-    progressFill.style.width = `${(1 / totalScenes) * 100}%`;
+    // Render current scene
+    const renderScene = (idx) => {
+      const scene = scenes[idx];
+      viewport.innerHTML = `
+        <div class="journey-stage" data-scene="${scene.type}">
+          ${scene.html}
+          <div class="journey-tap-left"></div>
+          <div class="journey-tap-right"></div>
+        </div>
+      `;
+
+      // Update segments
+      chrome.querySelectorAll('.journey-seg').forEach((seg, i) => {
+        seg.classList.remove('active', 'done');
+        if (i < idx) seg.classList.add('done');
+        if (i === idx) seg.classList.add('active');
+      });
+
+      // Tap zones
+      viewport.querySelector('.journey-tap-left')?.addEventListener('click', () => goTo(idx - 1));
+      viewport.querySelector('.journey-tap-right')?.addEventListener('click', () => {
+        if (idx < total - 1) goTo(idx + 1);
+      });
+
+      // Source scene buttons
+      if (scene.type === 'source') {
+        document.getElementById('j-explore')?.addEventListener('click', () => {
+          closeJourney();
+          setTimeout(() => this.openBookHub(document.getElementById('j-explore').dataset.bookId), 150);
+        });
+        document.getElementById('j-fav')?.addEventListener('click', () => {
+          const btn = document.getElementById('j-fav');
+          this.toggleFavorite(btn.dataset.lessonId);
+          const isFav = this.isFavorite(btn.dataset.lessonId);
+          btn.textContent = isFav ? '♥ Saved' : '♡ Save lesson';
+        });
+        document.getElementById('j-share')?.addEventListener('click', () => {
+          this.shareAsImage(lesson, book);
+        });
+      }
+    };
+
+    const goTo = (idx) => {
+      if (idx < 0 || idx >= total) return;
+      current = idx;
+      renderScene(current);
+    };
+
+    // Swipe gesture support
+    let touchStartX = 0;
+    let touchStartY = 0;
+    viewport.addEventListener('touchstart', (e) => {
+      touchStartX = e.touches[0].clientX;
+      touchStartY = e.touches[0].clientY;
+    }, { passive: true });
+
+    viewport.addEventListener('touchend', (e) => {
+      const dx = e.changedTouches[0].clientX - touchStartX;
+      const dy = e.changedTouches[0].clientY - touchStartY;
+      if (Math.abs(dx) > 50 && Math.abs(dx) > Math.abs(dy)) {
+        if (dx < 0 && current < total - 1) goTo(current + 1);
+        if (dx > 0 && current > 0) goTo(current - 1);
+      }
+    }, { passive: true });
+
+    // Keyboard support
+    const onKey = (e) => {
+      if (e.key === 'ArrowRight' || e.key === ' ') goTo(current + 1);
+      if (e.key === 'ArrowLeft') goTo(current - 1);
+      if (e.key === 'Escape') closeJourney();
+    };
+    document.addEventListener('keydown', onKey);
+
+    // Open
+    renderScene(0);
     modal.classList.remove('hidden');
     document.body.style.overflow = 'hidden';
     this.pushNav();
-
-    // Scroll progress
-    scroller.addEventListener('scroll', () => {
-      const scrollPct = scroller.scrollTop / (scroller.scrollHeight - scroller.clientHeight);
-      const sceneIdx = Math.min(totalScenes, Math.round(scrollPct * totalScenes) + 1);
-      progressFill.style.width = `${(sceneIdx / totalScenes) * 100}%`;
-    }, { passive: true });
 
     // Close
     const closeJourney = () => {
       modal.classList.add('hidden');
       document.body.style.overflow = '';
+      document.removeEventListener('keydown', onKey);
       if (history.state && history.state.layer) history.back();
     };
-    document.getElementById('journey-close').onclick = closeJourney;
 
-    // Explore book
-    const exploreBtn = document.getElementById('journey-explore-book');
-    if (exploreBtn) {
-      exploreBtn.addEventListener('click', () => {
-        closeJourney();
-        setTimeout(() => this.openBookHub(exploreBtn.dataset.bookId), 100);
-      });
-    }
-
-    // Favorite
-    const favBtn = document.getElementById('journey-fav');
-    if (favBtn) {
-      favBtn.addEventListener('click', () => {
-        this.toggleFavorite(favBtn.dataset.lessonId);
-        const isFav = this.isFavorite(favBtn.dataset.lessonId);
-        favBtn.textContent = isFav ? '♥ Saved' : '♡ Save this lesson';
-        favBtn.classList.toggle('is-fav', isFav);
-      });
-    }
-
-    // Share as image
-    const shareBtn = document.getElementById('journey-share');
-    if (shareBtn) {
-      shareBtn.addEventListener('click', () => {
-        this.shareAsImage(lesson, book);
-      });
-    }
+    chrome.querySelector('#journey-close').addEventListener('click', closeJourney);
   },
 
   async shareAsImage(lesson, book) {

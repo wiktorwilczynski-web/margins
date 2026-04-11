@@ -18,7 +18,7 @@
   <script>
     // Cache buster: force reload when new version is deployed
     (function() {
-      var v = 56;
+      var v = 57;
       var stored = localStorage.getItem('margins_app_version');
       if (stored && parseInt(stored) >= v) return;
       // New version — nuke all caches and reload
@@ -258,15 +258,10 @@
     </div>
   </div>
 
-  <!-- Lesson Journey (full-screen immersive) -->
+  <!-- Lesson Journey (cinematic stories) -->
   <div id="journey-modal" class="journey-modal hidden">
-    <div class="journey-chrome">
-      <button class="journey-close" id="journey-close">&times;</button>
-      <div class="journey-progress">
-        <div class="journey-progress-fill" id="journey-progress-fill"></div>
-      </div>
-    </div>
-    <div class="journey-scroller" id="journey-scroller"></div>
+    <div class="journey-chrome" id="journey-chrome"></div>
+    <div id="journey-viewport"></div>
   </div>
 
   <script src="js/storage.js"></script>
