@@ -2170,16 +2170,106 @@ label {
 
 /* ===== Animations ===== */
 @keyframes fadeIn {
-  from { opacity: 0; transform: translateY(8px); }
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes scaleIn {
+  from { opacity: 0; transform: scale(0.94); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(24px); }
   to { opacity: 1; transform: translateY(0); }
 }
 
 .fade-in {
-  animation: fadeIn var(--duration-normal) var(--ease-out);
+  animation: fadeIn var(--duration-normal) var(--ease-out) both;
 }
 
+/* Staggered card entrances */
+.stagger-1 { animation: slideUp var(--duration-slow) var(--ease-out) 0.04s both; }
+.stagger-2 { animation: slideUp var(--duration-slow) var(--ease-out) 0.1s both; }
+.stagger-3 { animation: slideUp var(--duration-slow) var(--ease-out) 0.16s both; }
+.stagger-4 { animation: slideUp var(--duration-slow) var(--ease-out) 0.22s both; }
+.stagger-5 { animation: slideUp var(--duration-slow) var(--ease-out) 0.28s both; }
+.stagger-6 { animation: slideUp var(--duration-slow) var(--ease-out) 0.34s both; }
+
+/* Book card entrance */
+.book-card {
+  animation: scaleIn var(--duration-normal) var(--ease-out) both;
+}
+
+.book-card:nth-child(1) { animation-delay: 0.02s; }
+.book-card:nth-child(2) { animation-delay: 0.06s; }
+.book-card:nth-child(3) { animation-delay: 0.1s; }
+.book-card:nth-child(4) { animation-delay: 0.14s; }
+.book-card:nth-child(5) { animation-delay: 0.18s; }
+.book-card:nth-child(6) { animation-delay: 0.22s; }
+.book-card:nth-child(7) { animation-delay: 0.26s; }
+.book-card:nth-child(8) { animation-delay: 0.3s; }
+
+/* Interactive spring bounce on button press */
+@keyframes springPress {
+  0% { transform: scale(1); }
+  40% { transform: scale(0.93); }
+  70% { transform: scale(1.02); }
+  100% { transform: scale(1); }
+}
+
+.btn-primary:active, .auth-btn-primary:active {
+  animation: springPress 0.35s var(--ease-spring);
+}
+
+/* Tab switch content transition */
 #main-content {
   transition: opacity var(--duration-fast) ease;
+}
+
+/* Carousel card subtle hover lift */
+.dash-lesson-card {
+  transition: transform var(--duration-normal) var(--ease-out), box-shadow var(--duration-normal) ease;
+}
+
+/* Modal slide-up entrance */
+.modal-content {
+  animation: modalSlideUp var(--duration-slow) var(--ease-out);
+}
+
+@keyframes modalSlideUp {
+  from { transform: translateY(40px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+/* Modal overlay fade */
+.modal-overlay {
+  animation: overlayFade var(--duration-normal) ease;
+}
+
+@keyframes overlayFade {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+/* Journey entrance */
+.journey-modal {
+  animation: journeyEnter var(--duration-slow) var(--ease-out);
+}
+
+@keyframes journeyEnter {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+/* Toast slide-up with spring */
+.toast.show {
+  animation: toastIn var(--duration-normal) var(--ease-spring);
+}
+
+@keyframes toastIn {
+  from { opacity: 0; transform: translateX(-50%) translateY(16px) scale(0.9); }
+  to { opacity: 1; transform: translateX(-50%) translateY(0) scale(1); }
 }
 
 /* ===== Settings ===== */

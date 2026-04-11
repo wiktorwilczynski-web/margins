@@ -121,11 +121,11 @@ const App = {
     const hour = new Date().getHours();
     const timeGreeting = hour < 12 ? 'Good morning' : hour < 18 ? 'Good afternoon' : 'Good evening';
 
-    let html = '<div class="fade-in">';
+    let html = '<div>';
 
     // --- Greeting + subtle streak ---
     html += `
-      <div class="dash-header">
+      <div class="dash-header stagger-1">
         <div class="dash-greeting">${timeGreeting}</div>
         <div class="dash-streak-row">
           <div class="dash-streak-num">${streak.current}</div>
@@ -179,8 +179,8 @@ const App = {
         lastBookId = pb?.id || null;
       }
 
-      html += `<div class="dash-section-label">Today's lessons</div>`;
-      html += `<div class="carousel-wrap" id="carousel-wrap">`;
+      html += `<div class="dash-section-label stagger-2">Today's lessons</div>`;
+      html += `<div class="carousel-wrap stagger-3" id="carousel-wrap">`;
       html += `<div class="lesson-carousel" id="lesson-carousel">`;
 
       for (let i = 0; i < lessonSlice.length; i++) {
@@ -260,8 +260,8 @@ const App = {
         }
       }
       if (favLessons.length > 0) {
-        html += `<div class="dash-section-label">Saved</div>`;
-        html += `<div class="saved-list">`;
+        html += `<div class="dash-section-label stagger-4">Saved</div>`;
+        html += `<div class="saved-list stagger-5">`;
         for (const { lesson, book } of favLessons.slice(0, 5)) {
           html += `
             <div class="saved-item" data-book-id="${book.id}">
@@ -538,6 +538,7 @@ const App = {
         <div class="journey-source-actions">
           <button class="journey-action-btn primary" id="journey-explore-book" data-book-id="${book.id}">Explore this book</button>
           <button class="journey-action-btn ${this.isFavorite(lesson.id) ? 'is-fav' : ''}" id="journey-fav" data-lesson-id="${lesson.id}">${this.isFavorite(lesson.id) ? '♥ Saved' : '♡ Save this lesson'}</button>
+          <button class="journey-action-btn" id="journey-share">Share as image</button>
         </div>
       </div>
     `;
@@ -582,6 +583,105 @@ const App = {
         favBtn.classList.toggle('is-fav', isFav);
       });
     }
+
+    // Share as image
+    const shareBtn = document.getElementById('journey-share');
+    if (shareBtn) {
+      shareBtn.addEventListener('click', () => {
+        this.shareAsImage(lesson, book);
+      });
+    }
+  },
+
+  async shareAsImage(lesson, book) {
+    const w = 720, h = 960, pad = 60;
+    const canvas = document.createElement('canvas');
+    canvas.width = w;
+    canvas.height = h;
+    const ctx = canvas.getContext('2d');
+
+    // Background
+    const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+    ctx.fillStyle = isDark ? '#0D0D0D' : '#F5F4F0';
+    ctx.fillRect(0, 0, w, h);
+
+    // Accent line at top
+    ctx.fillStyle = isDark ? '#7C73FF' : '#4F46E5';
+    ctx.fillRect(pad, pad, 40, 3);
+
+    // Title
+    ctx.fillStyle = isDark ? '#E8E8E8' : '#1A1A1A';
+    ctx.font = 'italic 32px Georgia, serif';
+    const titleLines = this.wrapText(ctx, lesson.title, w - pad * 2);
+    let y = pad + 40;
+    for (const line of titleLines) {
+      ctx.fillText(line, pad, y);
+      y += 42;
+    }
+
+    // Body
+    y += 16;
+    ctx.fillStyle = isDark ? '#9A9AA8' : '#6B6B78';
+    ctx.font = '16px Inter, -apple-system, sans-serif';
+    const bodyClean = lesson.body.replace(/<[^>]+>/g, '').replace(/\s+/g, ' ').trim();
+    const bodyText = bodyClean.length > 280 ? bodyClean.slice(0, 280).trim() + '...' : bodyClean;
+    const bodyLines = this.wrapText(ctx, bodyText, w - pad * 2);
+    for (const line of bodyLines) {
+      ctx.fillText(line, pad, y);
+      y += 26;
+    }
+
+    // Source at bottom
+    ctx.fillStyle = isDark ? '#555560' : '#A0A0AB';
+    ctx.font = '14px Inter, -apple-system, sans-serif';
+    ctx.fillText(`${book.title} · ${book.author}`, pad, h - pad - 28);
+
+    // App branding
+    ctx.fillStyle = isDark ? '#555560' : '#A0A0AB';
+    ctx.font = 'italic 13px Georgia, serif';
+    ctx.fillText('margins', pad, h - pad);
+
+    // Convert to blob and share or download
+    canvas.toBlob(async (blob) => {
+      const file = new File([blob], 'lesson.png', { type: 'image/png' });
+
+      if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
+        try {
+          await navigator.share({ files: [file], title: lesson.title });
+        } catch (e) {
+          if (e.name !== 'AbortError') this.downloadBlob(blob, 'lesson.png');
+        }
+      } else {
+        this.downloadBlob(blob, 'lesson.png');
+      }
+    }, 'image/png');
+  },
+
+  wrapText(ctx, text, maxWidth) {
+    const words = text.split(' ');
+    const lines = [];
+    let line = '';
+    for (const word of words) {
+      const test = line ? line + ' ' + word : word;
+      if (ctx.measureText(test).width > maxWidth && line) {
+        lines.push(line);
+        line = word;
+      } else {
+        line = test;
+      }
+    }
+    if (line) lines.push(line);
+    return lines;
+  },
+
+  downloadBlob(blob, filename) {
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    a.click();
+    URL.revokeObjectURL(url);
+    this.showToast('Image saved');
   },
 
   async generateMissingDetails() {
