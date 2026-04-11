@@ -682,13 +682,13 @@ Use **bold** for key terms. Be concise and sharp. No padding or pleasantries.`;
     main.innerHTML = '';
 
     const data = Storage.getData();
-    let view = 'books';
-    let selectedTag = null;
     let searchQuery = '';
+    let selectedTag = null;
 
     const render = () => {
-      // Build tag map across all unlocked lessons
       const allLessons = this.getAllUnlockedLessons(data);
+
+      // Build tag map
       const tagMap = {};
       for (const lesson of allLessons) {
         for (const tag of (lesson.tags || [])) {
@@ -697,165 +697,174 @@ Use **bold** for key terms. Be concise and sharp. No padding or pleasantries.`;
         }
       }
       const tags = Object.keys(tagMap).sort();
-      const hasTags = tags.length > 0;
 
-      // Search filtering
+      // Separate currently-reading from completed
+      const reading = data.books.filter(b => !b.completed && b.title !== 'Loose Quotes');
+      const completed = data.books.filter(b => b.completed);
       const q = searchQuery.toLowerCase().trim();
-      const matchingBooks = q ? data.books.filter(b =>
-        b.title.toLowerCase().includes(q) || b.author.toLowerCase().includes(q)
-      ) : data.books;
-      const matchingLessons = q ? allLessons.filter(l =>
-        l.title.toLowerCase().includes(q) || l.body.toLowerCase().includes(q)
-      ) : [];
 
-      let html = `
-        <div class="library-header fade-in">
-          <span class="library-count">${data.books.length} book${data.books.length !== 1 ? 's' : ''}</span>
-          <button class="library-add-btn" id="add-book-inline">+ Add book</button>
-        </div>
-        <div class="library-search">
-          <svg class="library-search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
-          <input type="search" id="library-search-input" placeholder="Search books and lessons..." value="${searchQuery}">
+      let html = '';
+
+      // Header
+      html += `
+        <div class="lib-header">
+          <h2 class="lib-title">Library</h2>
+          <button class="lib-add-btn" id="add-book-inline">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14"/></svg>
+          </button>
         </div>
       `;
 
-      // If searching, show search results
+      // Search
+      html += `
+        <div class="lib-search">
+          <svg class="lib-search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+          <input type="search" id="lib-search-input" placeholder="Search..." value="${searchQuery}">
+        </div>
+      `;
+
+      // Search results
       if (q) {
-        html += `<div class="dash-section-label" style="margin-top:0">Results</div>`;
-        if (matchingBooks.length === 0 && matchingLessons.length === 0) {
-          html += `<div class="topic-empty-hint">Nothing found for "${searchQuery}"</div>`;
-        }
-        if (matchingBooks.length > 0) {
-          html += '<div class="book-grid">';
-          for (const book of matchingBooks) {
-            html += `
-              <div class="book-card" data-book-id="${book.id}">
-                ${Covers.renderCover(book, 'card')}
-                <div class="book-card-info">
-                  <div class="book-title">${book.title}</div>
-                  <div class="book-author">${book.author}</div>
+        const matchBooks = data.books.filter(b => b.title.toLowerCase().includes(q) || b.author.toLowerCase().includes(q));
+        const matchLessons = allLessons.filter(l => l.title.toLowerCase().includes(q) || l.body.toLowerCase().includes(q));
+
+        if (matchBooks.length === 0 && matchLessons.length === 0) {
+          html += `<div class="lib-empty-search">No results for "${searchQuery}"</div>`;
+        } else {
+          if (matchBooks.length > 0) {
+            html += `<div class="lib-shelf">`;
+            for (const book of matchBooks) {
+              html += this.renderLibBookCard(book);
+            }
+            html += `</div>`;
+          }
+          if (matchLessons.length > 0) {
+            html += `<div class="lib-section-label">Lessons</div>`;
+            for (const lesson of matchLessons.slice(0, 8)) {
+              const book = data.books.find(b => b.lessons.some(l => l.id === lesson.id));
+              html += `
+                <div class="lib-lesson-row" data-lesson-id="${lesson.id}">
+                  <div class="lib-lesson-title">${lesson.title}</div>
+                  <div class="lib-lesson-source">${book?.title || ''}</div>
                 </div>
+              `;
+            }
+          }
+        }
+      } else {
+        // Currently reading shelf
+        if (reading.length > 0) {
+          html += `<div class="lib-section-label">Currently reading</div>`;
+          html += `<div class="lib-reading-scroll">`;
+          for (const book of reading) {
+            const progress = book.totalPages && book.currentPage
+              ? Math.min(100, Math.round((book.currentPage / book.totalPages) * 100))
+              : null;
+            html += `
+              <div class="lib-reading-card" data-book-id="${book.id}">
+                <div class="lib-reading-cover-wrap">
+                  ${book.coverUrl
+                    ? `<img class="lib-reading-cover" src="${book.coverUrl}" alt="">`
+                    : `<div class="lib-reading-cover-ph">${book.title}</div>`
+                  }
+                  ${progress !== null ? `
+                    <div class="lib-reading-progress">
+                      <div class="lib-reading-progress-fill" style="width:${progress}%"></div>
+                    </div>
+                  ` : ''}
+                </div>
+                <div class="lib-reading-title">${book.title}</div>
+                <div class="lib-reading-author">${book.author}</div>
+                ${progress !== null ? `<div class="lib-reading-pct">${progress}%</div>` : ''}
               </div>
             `;
           }
-          html += '</div>';
-        }
-        if (matchingLessons.length > 0) {
-          if (matchingBooks.length > 0) html += `<div class="dash-section-label">Lessons</div>`;
-          html += `<div class="topic-lessons-list">`;
-          for (const lesson of matchingLessons.slice(0, 10)) {
-            const book = data.books.find(b => b.lessons.some(l => l.id === lesson.id));
-            html += this.renderTopicLessonCard(lesson, book);
-          }
           html += `</div>`;
         }
-      } else {
-        // Normal view
-        if (hasTags) {
-          html += `
-            <div class="library-tabs">
-              <button class="lib-tab ${view === 'books' ? 'active' : ''}" data-view="books">Books</button>
-              <button class="lib-tab ${view === 'topics' ? 'active' : ''}" data-view="topics">Topics</button>
-            </div>
-          `;
+
+        // Topics pills (horizontal scroll)
+        if (tags.length > 0) {
+          html += `<div class="lib-section-label">Topics</div>`;
+          html += `<div class="lib-topics-scroll">`;
+          for (const tag of tags) {
+            html += `<button class="lib-topic-pill ${tag === selectedTag ? 'active' : ''}" data-tag="${tag}">${this.capitalizeTag(tag)}</button>`;
+          }
+          html += `</div>`;
+
+          // Selected tag lessons
+          if (selectedTag && tagMap[selectedTag]) {
+            for (const lesson of tagMap[selectedTag].slice(0, 6)) {
+              const book = data.books.find(b => b.lessons.some(l => l.id === lesson.id));
+              html += `
+                <div class="lib-lesson-row" data-lesson-id="${lesson.id}">
+                  <div class="lib-lesson-title">${lesson.title}</div>
+                  <div class="lib-lesson-source">${book?.title || ''}</div>
+                </div>
+              `;
+            }
+          }
         }
 
-      if (view === 'books') {
+        // All books grid
+        html += `<div class="lib-section-label">All books</div>`;
         if (data.books.length === 0) {
-          html += `<div class="empty-state"><h3>Nothing on the shelf yet</h3><p>Tap "+ Add book" above to bring in your first read. We'll remember the good parts for you.</p></div>`;
+          html += `<div class="lib-empty-search">Your shelf is empty. Tap + to add your first book.</div>`;
         } else {
-          html += '<div class="book-grid">';
+          html += `<div class="lib-shelf">`;
           for (const book of data.books) {
-            html += `
-              <div class="book-card" data-book-id="${book.id}">
-                ${Covers.renderCover(book, 'card')}
-                <div class="book-card-info">
-                  <div class="book-title">${book.title}</div>
-                  <div class="book-author">${book.author}</div>
-                </div>
-              </div>
-            `;
-          }
-          html += '</div>';
-        }
-      } else {
-        // Topics view
-        html += `<div class="topic-pills">`;
-        for (const tag of tags) {
-          const active = tag === selectedTag;
-          html += `<button class="topic-pill ${active ? 'active' : ''}" data-tag="${tag}">${this.capitalizeTag(tag)}<span class="topic-pill-count">${tagMap[tag].length}</span></button>`;
-        }
-        html += `</div>`;
-
-        if (selectedTag && tagMap[selectedTag]) {
-          html += `<div class="topic-lessons-list">`;
-          for (const lesson of tagMap[selectedTag]) {
-            const book = data.books.find(b => b.lessons.some(l => l.id === lesson.id));
-            html += this.renderTopicLessonCard(lesson, book);
+            if (book.title === 'Loose Quotes' && !book.quotes.length) continue;
+            html += this.renderLibBookCard(book);
           }
           html += `</div>`;
-        } else {
-          html += `<div class="topic-empty-hint">Tap a topic to browse lessons</div>`;
         }
       }
-      } // close search else
 
       main.innerHTML = html;
 
-      // Search input
-      const searchInput = document.getElementById('library-search-input');
+      // Bindings
+      const searchInput = document.getElementById('lib-search-input');
       if (searchInput) {
         searchInput.addEventListener('input', (e) => {
           searchQuery = e.target.value;
           render();
-          // Re-focus and set cursor
-          const el = document.getElementById('library-search-input');
+          const el = document.getElementById('lib-search-input');
           if (el) { el.focus(); el.setSelectionRange(el.value.length, el.value.length); }
         });
       }
 
-      // Tab toggle
-      main.querySelectorAll('.lib-tab').forEach(btn => {
-        btn.addEventListener('click', () => {
-          view = btn.dataset.view;
-          selectedTag = null;
-          render();
-        });
-      });
+      document.getElementById('add-book-inline')?.addEventListener('click', () => this.openAddBookModal());
 
-      // Book cards
-      main.querySelectorAll('.book-card').forEach(card => {
+      main.querySelectorAll('.lib-reading-card, .lib-book-card').forEach(card => {
         card.addEventListener('click', () => this.openBookHub(card.dataset.bookId));
       });
 
-      // Add book
-      document.getElementById('add-book-inline')?.addEventListener('click', () => this.openAddBookModal());
-
-      // Topic pills
-      main.querySelectorAll('.topic-pill').forEach(pill => {
+      main.querySelectorAll('.lib-topic-pill').forEach(pill => {
         pill.addEventListener('click', () => {
           selectedTag = pill.dataset.tag === selectedTag ? null : pill.dataset.tag;
           render();
         });
       });
 
-      // Learn more in topic lessons
-      main.querySelectorAll('.learn-more-btn').forEach(btn => {
-        btn.addEventListener('click', () => this.handleLearnMore(btn.dataset.lessonId, btn.dataset.bookId));
-      });
-
-      // AI follow up in topic lessons
-      main.querySelectorAll('.ask-followup').forEach(btn => {
-        btn.addEventListener('click', () => this.openChatWithContext('lesson', btn.dataset.lessonId));
-      });
-
-      // Explore book in topic lessons
-      main.querySelectorAll('.explore-book').forEach(btn => {
-        btn.addEventListener('click', () => this.openBookHub(btn.dataset.bookId));
+      main.querySelectorAll('.lib-lesson-row').forEach(row => {
+        row.addEventListener('click', () => this.openLessonJourney(row.dataset.lessonId));
       });
     };
 
     render();
+  },
+
+  renderLibBookCard(book) {
+    return `
+      <div class="lib-book-card" data-book-id="${book.id}">
+        ${book.coverUrl
+          ? `<img class="lib-book-cover" src="${book.coverUrl}" alt="">`
+          : `<div class="lib-book-cover-ph"><span>${book.title}</span></div>`
+        }
+        <div class="lib-book-title">${book.title}</div>
+        <div class="lib-book-author">${book.author}</div>
+        <div class="lib-book-lessons">${book.lessons.length} lesson${book.lessons.length !== 1 ? 's' : ''}</div>
+      </div>
+    `;
   },
 
   capitalizeTag(tag) {
