@@ -105,7 +105,7 @@ const App = {
     }
   },
 
-  // ===== TODAY TAB =====
+  // ===== HOME TAB =====
   renderToday(container) {
     const main = container || document.getElementById('main-content');
     main.innerHTML = '';
@@ -115,141 +115,130 @@ const App = {
     const allLessons = this.getAllUnlockedLessons(data);
     const allQuotes = this.getAllQuotes(data);
     const todayStr = new Date().toISOString().slice(0, 10);
-    const checkedInToday = streak.lastCheckIn === todayStr;
-    const isSunday = new Date().getDay() === 0;
 
     const hour = new Date().getHours();
     const timeGreeting = hour < 12 ? 'Good morning' : hour < 18 ? 'Good afternoon' : 'Good evening';
 
-    let html = '<div>';
-
-    // --- Greeting + subtle streak ---
-    html += `
-      <div class="dash-header stagger-1">
-        <div class="dash-greeting">${timeGreeting}</div>
-        <div class="dash-streak-row">
-          <div class="dash-streak-num">${streak.current}</div>
-          <div class="dash-streak-meta">
-            <span class="dash-streak-label">day streak</span>
-            <span class="dash-streak-best">· best ${streak.longest}</span>
+    // Empty state
+    if (allLessons.length === 0 && allQuotes.length === 0) {
+      main.innerHTML = `
+        <div class="home-empty">
+          <div class="home-empty-icon">
+            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="var(--text-muted)" stroke-width="1.5"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
           </div>
-          <span class="dash-streak-done">✓</span>
+          <h2 class="home-empty-title">A blank page,<br>full of possibility</h2>
+          <p class="home-empty-body">Head to the Library tab and add your first book. We'll surface one idea each day to help it stick.</p>
         </div>
-      </div>
-    `;
+      `;
+      return;
+    }
 
-    // --- Lessons carousel (up to 10) ---
-    if (allLessons.length > 0) {
-      const dayIndex = this.dateToDayIndex(todayStr + 'H' + hour);
+    // Build today's lesson pool
+    const dayIndex = this.dateToDayIndex(todayStr + 'H' + Math.floor(hour / 3));
+    const sortedBooks = [...data.books]
+      .filter(b => b.lessons && b.lessons.length > 0)
+      .sort((a, b) => new Date(b.addedAt || 0) - new Date(a.addedAt || 0));
+    const n = Math.max(sortedBooks.length, 1);
+    const weightedPool = [];
+    for (const lesson of allLessons) {
+      const rank = sortedBooks.findIndex(b => b.lessons.some(l => l.id === lesson.id));
+      const tier = rank === -1 ? 2 : Math.min(2, Math.floor((rank / n) * 3));
+      const weight = [3, 2, 1][tier];
+      for (let w = 0; w < weight; w++) weightedPool.push(lesson);
+    }
+    const shuffled = this.seededShuffle(weightedPool, dayIndex);
+    const lessonSlice = [];
+    const seenIds = new Set();
+    let lastBookId = null;
+    for (let i = 0; i < Math.min(8, allLessons.length) && shuffled.length > 0; i++) {
+      let idx = shuffled.findIndex(l => {
+        if (seenIds.has(l.id)) return false;
+        const b = data.books.find(bk => bk.lessons?.some(lk => lk.id === l.id));
+        return !b || b.id !== lastBookId;
+      });
+      if (idx === -1) idx = shuffled.findIndex(l => !seenIds.has(l.id));
+      if (idx === -1) break;
+      const picked = shuffled.splice(idx, 1)[0];
+      lessonSlice.push(picked);
+      seenIds.add(picked.id);
+      const pb = data.books.find(bk => bk.lessons?.some(lk => lk.id === picked.id));
+      lastBookId = pb?.id || null;
+    }
 
-      // Build recency-weighted pool: books later in array = more recently added
-      // top third (most recent) 3x, middle 2x, bottom (oldest) 1x
-      const sortedBooks = [...data.books]
-        .filter(b => b.lessons && b.lessons.length > 0)
-        .sort((a, b) => new Date(b.addedAt || 0) - new Date(a.addedAt || 0)); // newest first
-      const n = Math.max(sortedBooks.length, 1);
-      const weightedPool = [];
-      for (const lesson of allLessons) {
-        const rank = sortedBooks.findIndex(b => b.lessons.some(l => l.id === lesson.id));
-        const tier = rank === -1 ? 2 : Math.min(2, Math.floor((rank / n) * 3));
-        const weight = [3, 2, 1][tier];
-        for (let w = 0; w < weight; w++) weightedPool.push(lesson);
-      }
+    const hero = lessonSlice[0];
+    const heroBook = hero ? data.books.find(b => b.lessons.some(l => l.id === hero.id)) : null;
+    const rest = lessonSlice.slice(1);
+    const sentences = hero ? (hero.body.match(/[^.!?]+[.!?]+/g) || [hero.body]) : [];
+    const hookSentence = sentences[0]?.trim() || '';
 
-      const shuffled = this.seededShuffle(weightedPool, dayIndex);
-      const count = Math.min(10, allLessons.length);
-      const lessonSlice = [];
-      const seenIds = new Set();
-      let lastBookId = null;
-      const pool = [...shuffled];
-      for (let i = 0; i < count && pool.length > 0; i++) {
-        // Prefer: not seen + not same book as last
-        let idx = pool.findIndex(l => {
-          if (seenIds.has(l.id)) return false;
-          const b = data.books.find(bk => bk.lessons && bk.lessons.some(lk => lk.id === l.id));
-          return !b || b.id !== lastBookId;
-        });
-        // Fallback: just not seen
-        if (idx === -1) idx = pool.findIndex(l => !seenIds.has(l.id));
-        if (idx === -1) break;
-        const picked = pool.splice(idx, 1)[0];
-        lessonSlice.push(picked);
-        seenIds.add(picked.id);
-        const pb = data.books.find(bk => bk.lessons && bk.lessons.some(lk => lk.id === picked.id));
-        lastBookId = pb?.id || null;
-      }
+    // Preload covers
+    data.books.forEach(b => { if (b.coverUrl) { const img = new Image(); img.src = b.coverUrl; } });
 
-      html += `<div class="dash-section-label stagger-2">Today's lessons</div>`;
-      html += `<div class="carousel-wrap stagger-3" id="carousel-wrap">`;
-      html += `<div class="lesson-carousel" id="lesson-carousel">`;
+    let html = '';
 
-      for (let i = 0; i < lessonSlice.length; i++) {
-        const lesson = lessonSlice[i];
-        const book = data.books.find(b => b.lessons.some(l => l.id === lesson.id));
-        html += `
-          <div class="lesson-slide">
-            <div class="dash-lesson-card">
-              <div class="dash-lesson-title lesson-title-link" data-book-id="${book?.id}" data-lesson-id="${lesson.id}">${lesson.title}</div>
-              <div class="dash-lesson-body">${this.formatLessonBody(lesson.body)}</div>
-              <div class="dash-lesson-source">
-                ${book && book.coverUrl ? `<img class="lesson-source-thumb" src="${book.coverUrl}" alt="">` : ''}
-                ${book ? `<em>${book.title}</em> · ${book.author}` : ''}
-              </div>
-              <div class="followup-prompt">
-                <div class="followup-row">
-                  <button class="followup-btn learn-more-btn" data-lesson-id="${lesson.id}" data-book-id="${book?.id}">Learn more</button>
-                  <button class="followup-btn ask-followup" data-lesson-id="${lesson.id}">
-                    <span class="ai-pill-badge">AI</span>
-                    Follow up
-                  </button>
-                  <button class="followup-btn fav-btn ${this.isFavorite(lesson.id) ? 'is-fav' : ''}" data-lesson-id="${lesson.id}" aria-label="Save">${this.isFavorite(lesson.id) ? '♥' : '♡'}</button>
-                </div>
-                <div class="learn-more-section hidden" id="learn-more-${lesson.id}"></div>
-                ${book ? `<button class="followup-btn explore-book wide-followup" data-book-id="${book.id}">Explore the book</button>` : ''}
-              </div>
+    // ===== HERO SECTION =====
+    if (hero) {
+      html += `
+        <section class="home-hero">
+          <div class="home-hero-label">${timeGreeting}</div>
+          <h1 class="home-hero-title">${hero.title}</h1>
+          <p class="home-hero-excerpt">${hookSentence}</p>
+          <button class="home-hero-cta" id="hero-journey" data-lesson-id="${hero.id}">
+            Begin journey
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+          </button>
+          <div class="home-hero-source">
+            ${heroBook?.coverUrl ? `<img class="home-hero-cover" src="${heroBook.coverUrl}" alt="">` : ''}
+            <div class="home-hero-source-text">
+              <span class="home-hero-book">${heroBook?.title || ''}</span>
+              <span class="home-hero-author">${heroBook?.author || ''}</span>
             </div>
+          </div>
+          <div class="home-hero-actions">
+            <button class="home-action-btn ${this.isFavorite(hero.id) ? 'is-fav' : ''}" id="hero-fav" data-lesson-id="${hero.id}">
+              ${this.isFavorite(hero.id) ? '♥' : '♡'}
+            </button>
+            <button class="home-action-btn" id="hero-chat" data-lesson-id="${hero.id}">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+            </button>
+          </div>
+        </section>
+      `;
+    }
+
+    // ===== MORE TODAY =====
+    if (rest.length > 0) {
+      html += `<div class="home-section-label">More today</div>`;
+      html += `<div class="home-cards-scroll">`;
+      for (const lesson of rest) {
+        const book = data.books.find(b => b.lessons.some(l => l.id === lesson.id));
+        const firstSentence = (lesson.body.match(/[^.!?]+[.!?]+/) || [lesson.body])[0]?.trim() || '';
+        const truncated = firstSentence.length > 100 ? firstSentence.slice(0, 100).trim() + '...' : firstSentence;
+        html += `
+          <div class="home-mini-card" data-lesson-id="${lesson.id}">
+            <div class="home-mini-title">${lesson.title}</div>
+            <div class="home-mini-body">${truncated}</div>
+            <div class="home-mini-source">${book?.title || ''}</div>
           </div>
         `;
       }
-
       html += `</div>`;
+    }
 
-      if (lessonSlice.length > 1) {
-        html += `<div class="carousel-dots" id="carousel-dots">`;
-        for (let i = 0; i < lessonSlice.length; i++) {
-          html += `<span class="carousel-dot${i === 0 ? ' active' : ''}"></span>`;
-        }
-        html += `</div>`;
-      }
-
-      html += `</div>`; // close carousel-wrap
-
-    } else if (allQuotes.length > 0) {
-      const dayIndex = this.dateToDayIndex(todayStr);
-      const quote = allQuotes[dayIndex % allQuotes.length];
-      const book = data.books.find(b => b.quotes.some(q => q.id === quote.id));
-      const preview = quote.text.length > 100 ? quote.text.slice(0, 100) + '...' : quote.text;
-
+    // ===== STREAK =====
+    if (streak.current > 0 || streak.longest > 0) {
       html += `
-        <div class="dash-section-label">Today's thought</div>
-        <div class="dash-quote-card">
-          <div class="dash-quote-preview">"${preview}"</div>
-          <div class="dash-quote-full hidden">"${quote.text}"</div>
-          <button class="dash-quote-expand" id="expand-today-quote">Read full quote</button>
-          <div class="dash-quote-source">${book ? `<em>${book.title}</em> · ${book.author}` : ''}</div>
-        </div>
-      `;
-
-    } else {
-      html += `
-        <div class="empty-state">
-          <h3>A blank page, full of possibility</h3>
-          <p>Head to the Library tab and add your first book. Every great reader started somewhere.</p>
+        <div class="home-streak-card">
+          <div class="home-streak-num">${streak.current}</div>
+          <div class="home-streak-detail">
+            <span class="home-streak-label">day streak</span>
+            <span class="home-streak-best">Best: ${streak.longest}</span>
+          </div>
         </div>
       `;
     }
 
-    // --- Saved lessons compact ---
+    // ===== SAVED =====
     const favIds = data.favorites || [];
     if (favIds.length > 0) {
       const favLessons = [];
@@ -260,13 +249,13 @@ const App = {
         }
       }
       if (favLessons.length > 0) {
-        html += `<div class="dash-section-label stagger-4">Saved</div>`;
-        html += `<div class="saved-list stagger-5">`;
-        for (const { lesson, book } of favLessons.slice(0, 5)) {
+        html += `<div class="home-section-label">Saved</div>`;
+        html += `<div class="home-saved-list">`;
+        for (const { lesson, book } of favLessons.slice(0, 4)) {
           html += `
-            <div class="saved-item" data-book-id="${book.id}">
-              <div class="saved-item-title">${lesson.title}</div>
-              <div class="saved-item-source">${book.title}</div>
+            <div class="home-saved-item" data-lesson-id="${lesson.id}">
+              <div class="home-saved-title">${lesson.title}</div>
+              <div class="home-saved-source">${book.title}</div>
             </div>
           `;
         }
@@ -274,152 +263,41 @@ const App = {
       }
     }
 
-    // --- Weekly reflection (Sundays) ---
-    if (isSunday) {
-      const weekLessons = allLessons.slice(0, 3);
-      if (weekLessons.length > 0) {
-        const existingReflection = data.weeklyReflections.find(r => r.weekOf === todayStr);
-        html += `
-          <div class="dash-section-label">Weekly reflection</div>
-          <div class="reflection-card">
-            <div class="reflection-lessons">
-              ${weekLessons.map(l => `<div>${l.title}</div>`).join('')}
-            </div>
-            <input type="text" id="reflection-input" placeholder="What stuck with you?" value="${existingReflection?.note || ''}">
-            <button class="btn btn-sm" id="save-reflection">Save</button>
-          </div>
-        `;
-      }
-    }
-
-    html += '</div>';
     main.innerHTML = html;
 
-    // Preload covers into browser cache
-    data.books.forEach(b => { if (b.coverUrl) { const img = new Image(); img.src = b.coverUrl; } });
+    // ===== EVENT BINDINGS =====
+    // Hero journey CTA
+    const heroBtn = document.getElementById('hero-journey');
+    if (heroBtn) {
+      heroBtn.addEventListener('click', () => this.openLessonJourney(heroBtn.dataset.lessonId));
+    }
 
-    // Lesson title → open lesson journey
-    main.querySelectorAll('.lesson-title-link').forEach(el => {
-      el.addEventListener('click', () => {
-        const lessonId = el.dataset.lessonId;
-        if (lessonId) this.openLessonJourney(lessonId);
-      });
-    });
-
-    // Follow-up button
-    main.querySelectorAll('.ask-followup').forEach(btn => {
-      btn.addEventListener('click', () => {
-        this.openChatWithContext('lesson', btn.dataset.lessonId);
-      });
-    });
-
-    // Explore book button
-    main.querySelectorAll('.explore-book').forEach(btn => {
-      btn.addEventListener('click', () => {
-        const bookId = btn.dataset.bookId;
-        if (bookId) this.openBookHub(bookId);
-      });
-    });
-
-    // Learn More button
-    main.querySelectorAll('.learn-more-btn').forEach(btn => {
-      btn.addEventListener('click', () => {
-        this.handleLearnMore(btn.dataset.lessonId, btn.dataset.bookId);
-      });
-    });
-
-    // Favorite button
-    main.querySelectorAll('.fav-btn').forEach(btn => {
-      btn.addEventListener('click', () => {
-        this.toggleFavorite(btn.dataset.lessonId);
-        btn.classList.toggle('is-fav');
-        btn.textContent = btn.classList.contains('is-fav') ? '♥' : '♡';
-      });
-    });
-
-    // Saved items → open book hub
-    main.querySelectorAll('.saved-item').forEach(item => {
-      item.addEventListener('click', () => this.openBookHub(item.dataset.bookId));
-    });
-
-    // Quote expand
-    const expandBtn = document.getElementById('expand-today-quote');
-    if (expandBtn) {
-      expandBtn.addEventListener('click', () => {
-        const card = expandBtn.closest('.dash-quote-card');
-        const full = card.querySelector('.dash-quote-full');
-        const preview = card.querySelector('.dash-quote-preview');
-        const isHidden = full.classList.contains('hidden');
-        full.classList.toggle('hidden');
-        preview.classList.toggle('hidden');
-        expandBtn.textContent = isHidden ? 'Hide' : 'Read full quote';
+    // Hero favorite
+    const heroFav = document.getElementById('hero-fav');
+    if (heroFav) {
+      heroFav.addEventListener('click', () => {
+        this.toggleFavorite(heroFav.dataset.lessonId);
+        const isFav = this.isFavorite(heroFav.dataset.lessonId);
+        heroFav.innerHTML = isFav ? '♥' : '♡';
+        heroFav.classList.toggle('is-fav', isFav);
       });
     }
 
-    // Carousel scroll → resize + dots
-    const carousel = document.getElementById('lesson-carousel');
-    if (carousel) {
-      const updateCarouselHeight = () => {
-        const dots = document.getElementById('carousel-dots');
-        const idx = Math.round(carousel.scrollLeft / carousel.offsetWidth);
-        const slides = carousel.querySelectorAll('.lesson-slide');
-        const activeSlide = slides[idx] || slides[0];
-        if (activeSlide) {
-          const card = activeSlide.querySelector('.dash-lesson-card');
-          if (card) {
-            carousel.style.height = card.offsetHeight + 'px';
-            if (dots) dots.style.top = (card.offsetHeight + 8) + 'px';
-          }
-        }
-      };
-
-      // Expose so handleLearnMore can trigger resize after expansion
-      this._updateDotsPosition = updateCarouselHeight;
-
-      let scrollTimer;
-      carousel.addEventListener('scroll', () => {
-        clearTimeout(scrollTimer);
-        scrollTimer = setTimeout(() => {
-          const idx = Math.round(carousel.scrollLeft / carousel.offsetWidth);
-          main.querySelectorAll('.carousel-dot').forEach((dot, i) => {
-            dot.classList.toggle('active', i === idx);
-          });
-          // After swipe settles, close any open Learn More
-          const openSections = main.querySelectorAll('.learn-more-section:not(.hidden)');
-          if (openSections.length > 0) {
-            openSections.forEach(s => { s.classList.add('hidden'); s.innerHTML = ''; });
-          }
-          updateCarouselHeight();
-        }, 50);
-      }, { passive: true });
-
-      // Set initial height after render
-      requestAnimationFrame(() => requestAnimationFrame(updateCarouselHeight));
+    // Hero chat
+    const heroChat = document.getElementById('hero-chat');
+    if (heroChat) {
+      heroChat.addEventListener('click', () => this.openChatWithContext('lesson', heroChat.dataset.lessonId));
     }
 
-    // Book cards → hub
-    // Weekly reflection save
-    const saveReflection = document.getElementById('save-reflection');
-    if (saveReflection) {
-      saveReflection.addEventListener('click', () => {
-        const note = document.getElementById('reflection-input').value;
-        if (!note.trim()) return;
-        Storage.updateData(d => {
-          const existing = d.weeklyReflections.find(r => r.weekOf === todayStr);
-          if (existing) {
-            existing.note = note;
-          } else {
-            d.weeklyReflections.push({
-              id: Storage.uuid(),
-              weekOf: todayStr,
-              lessonIds: allLessons.slice(0, 3).map(l => l.id),
-              note
-            });
-          }
-        });
-        this.showToast('Reflection saved');
-      });
-    }
+    // Mini cards → journey
+    main.querySelectorAll('.home-mini-card').forEach(card => {
+      card.addEventListener('click', () => this.openLessonJourney(card.dataset.lessonId));
+    });
+
+    // Saved items → journey
+    main.querySelectorAll('.home-saved-item').forEach(item => {
+      item.addEventListener('click', () => this.openLessonJourney(item.dataset.lessonId));
+    });
   },
 
   formatLessonBody(body) {
