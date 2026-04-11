@@ -3974,7 +3974,7 @@ label {
 .aq-search-wrap input { width: 100%; box-sizing: border-box; padding: 10px 14px; font-size: 15px; font-family: var(--font-body); border: 1px solid var(--border-strong); border-radius: var(--radius-sm); background: var(--bg-card); color: var(--text); outline: none; }
 .aq-search-wrap input:focus { border-color: var(--accent); }
 
-.aq-results { position: absolute; top: calc(100% + 4px); left: 0; right: 0; background: var(--bg-elevated); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow-lg); max-height: 220px; overflow-y: auto; z-index: 200; }
+.aq-results { background: var(--bg-elevated); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow-md); max-height: 220px; overflow-y: auto; margin-top: 4px; }
 .aq-results.hidden { display: none; }
 .aq-result-item { display: flex; align-items: center; gap: 10px; padding: 10px 12px; cursor: pointer; transition: background var(--duration-fast); }
 .aq-result-item:hover { background: var(--bg-card-alt); }
