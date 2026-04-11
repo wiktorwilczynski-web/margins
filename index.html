@@ -18,7 +18,7 @@
   <script>
     // Cache buster: force reload when new version is deployed
     (function() {
-      var v = 68;
+      var v = 69;
       var stored = localStorage.getItem('margins_app_version');
       if (stored && parseInt(stored) >= v) return;
       // New version — nuke all caches and reload
@@ -265,6 +265,7 @@
   <script src="js/covers.js"></script>
   <script src="js/llm.js"></script>
   <script src="js/data.js"></script>
+  <script src="js/examples.js"></script>
   <script src="js/auth.js" type="module"></script>
   <script src="js/app.js"></script>
 </body>
