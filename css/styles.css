@@ -147,7 +147,7 @@ body {
   letter-spacing: -0.5px;
 }
 
-#settings-btn {
+#settings-btn, #add-quote-btn {
   background: none;
   border: none;
   color: var(--text-muted);
@@ -157,7 +157,7 @@ body {
   transition: color var(--duration-fast) ease, background var(--duration-fast) ease;
 }
 
-#settings-btn:active {
+#settings-btn:active, #add-quote-btn:active {
   background: var(--accent-soft);
   color: var(--accent);
 }

@@ -120,20 +120,10 @@ const App = {
     const todayStr = new Date().toISOString().slice(0, 10);
 
     const hour = new Date().getHours();
-    const pendingQuotes = parseInt(localStorage.getItem('margins_pending_quotes') || '0');
-    const topRow = `
-      <div class="home-top-row">
-        <button class="home-add-quote-btn" id="home-add-quote">
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14"/></svg>
-          Add quote
-        </button>
-        ${pendingQuotes > 0 ? `<span class="home-pending-badge">${pendingQuotes} pending</span>` : ''}
-      </div>
-    `;
 
     // Empty state
     if (allLessons.length === 0 && allQuotes.length === 0) {
-      main.innerHTML = topRow + `
+      main.innerHTML = `
         <div class="home-empty">
           <div class="home-empty-icon">
             <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="var(--text-muted)" stroke-width="1.5"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
@@ -142,7 +132,6 @@ const App = {
           <p class="home-empty-body">Head to the Library tab and add your first book. We'll surface one idea each day to help it stick.</p>
         </div>
       `;
-      document.getElementById('home-add-quote')?.addEventListener('click', () => this.openAddQuoteModal());
       return;
     }
 
@@ -187,7 +176,7 @@ const App = {
     // Preload covers
     data.books.forEach(b => { if (b.coverUrl) { const img = new Image(); img.src = b.coverUrl; } });
 
-    let html = topRow;
+    let html = '';
 
     // ===== HERO SECTION =====
     if (hero) {
@@ -308,8 +297,6 @@ const App = {
       item.addEventListener('click', () => this.openLessonJourney(item.dataset.lessonId));
     });
 
-    // Add quote button
-    document.getElementById('home-add-quote')?.addEventListener('click', () => this.openAddQuoteModal());
   },
 
   formatLessonBody(body) {
@@ -2032,6 +2019,8 @@ Rules:
   bindAddQuote() {
     const modal = document.getElementById('add-quote-modal');
     if (!modal) return;
+
+    document.getElementById('add-quote-btn')?.addEventListener('click', () => this.openAddQuoteModal());
 
     let selectedBook = null;
     let mode = 'existing';
