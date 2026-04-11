@@ -7,7 +7,8 @@ import {
 } from '../firebase/firebase-auth.js';
 import {
   initializeFirestore, persistentLocalCache, persistentSingleTabManager,
-  doc, getDoc, setDoc, onSnapshot
+  doc, getDoc, setDoc, onSnapshot,
+  collection, addDoc, query, where, getDocs
 } from '../firebase/firebase-firestore.js';
 
 const firebaseConfig = {
@@ -235,9 +236,34 @@ onAuthStateChanged(auth, async (user) => {
   }
 });
 
+// ===== Quote Queue (Firestore) =====
+
+async function addQuote(quoteData) {
+  if (!currentUserId) throw new Error('Not signed in');
+  await addDoc(collection(db, 'quotes'), {
+    ...quoteData,
+    userId: currentUserId,
+    addedAt: new Date().toISOString(),
+    processed: false
+  });
+}
+
+async function getPendingQuotes() {
+  if (!currentUserId) return [];
+  const q = query(
+    collection(db, 'quotes'),
+    where('userId', '==', currentUserId),
+    where('processed', '==', false)
+  );
+  const snap = await getDocs(q);
+  return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+}
+
 // Expose sync and signout to global scope
 window.Auth = {
   syncToCloud,
   signOut: () => signOut(auth),
-  get currentUserId() { return currentUserId; }
+  get currentUserId() { return currentUserId; },
+  addQuote,
+  getPendingQuotes
 };

@@ -21,6 +21,7 @@ const App = {
     this.bindNavigation();
     this.bindSettings();
     this.bindAddBook();
+    this.bindAddQuote();
     this.bindChatFab();
     this.registerSW();
     this.renderTab('today');
@@ -39,13 +40,10 @@ const App = {
     const needsDetails = Storage.getData().books.some(b => b.lessons.some(l => !l.detail));
     if (needsDetails) {
       this.generateMissingDetails();
-    } else {
-      // Only generate examples after all details are done
-      const needsExamples = Storage.getData().books.some(b => b.lessons.some(l => !l.examples));
-      if (needsExamples) {
-        this.generateMissingExamples();
-      }
     }
+
+    // Apply pre-written examples to lessons that don't have them
+    this.applyExamples();
   },
 
   // ===== NAVIGATION =====
@@ -83,7 +81,7 @@ const App = {
       document.body.style.overflow = '';
       return;
     }
-    const modals = ['chat-modal', 'book-hub-modal', 'add-book-modal'];
+    const modals = ['chat-modal', 'book-hub-modal', 'add-book-modal', 'add-quote-modal'];
     for (const id of modals) {
       const el = document.getElementById(id);
       if (el && !el.classList.contains('hidden')) {
@@ -122,10 +120,20 @@ const App = {
     const todayStr = new Date().toISOString().slice(0, 10);
 
     const hour = new Date().getHours();
+    const pendingQuotes = parseInt(localStorage.getItem('margins_pending_quotes') || '0');
+    const topRow = `
+      <div class="home-top-row">
+        <button class="home-add-quote-btn" id="home-add-quote">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14"/></svg>
+          Add quote
+        </button>
+        ${pendingQuotes > 0 ? `<span class="home-pending-badge">${pendingQuotes} pending</span>` : ''}
+      </div>
+    `;
 
     // Empty state
     if (allLessons.length === 0 && allQuotes.length === 0) {
-      main.innerHTML = `
+      main.innerHTML = topRow + `
         <div class="home-empty">
           <div class="home-empty-icon">
             <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="var(--text-muted)" stroke-width="1.5"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
@@ -134,6 +142,7 @@ const App = {
           <p class="home-empty-body">Head to the Library tab and add your first book. We'll surface one idea each day to help it stick.</p>
         </div>
       `;
+      document.getElementById('home-add-quote')?.addEventListener('click', () => this.openAddQuoteModal());
       return;
     }
 
@@ -178,7 +187,7 @@ const App = {
     // Preload covers
     data.books.forEach(b => { if (b.coverUrl) { const img = new Image(); img.src = b.coverUrl; } });
 
-    let html = '';
+    let html = topRow;
 
     // ===== HERO SECTION =====
     if (hero) {
@@ -298,6 +307,9 @@ const App = {
     main.querySelectorAll('.home-saved-item').forEach(item => {
       item.addEventListener('click', () => this.openLessonJourney(item.dataset.lessonId));
     });
+
+    // Add quote button
+    document.getElementById('home-add-quote')?.addEventListener('click', () => this.openAddQuoteModal());
   },
 
   formatLessonBody(body) {
@@ -701,59 +713,19 @@ Use **bold** for key terms. Be concise and sharp. No padding or pleasantries.`;
     this.showToast('Lesson details generated');
   },
 
-  async generateMissingExamples() {
+  applyExamples() {
+    if (!window.LESSON_EXAMPLES) return;
     const data = Storage.getData();
-    const hasKey = (data.settings.geminiApiKey || data.settings.groqApiKey);
-    if (!hasKey) return;
-
-    const missing = [];
+    let updated = false;
     for (const book of data.books) {
       for (const lesson of book.lessons) {
-        if (!lesson.examples) {
-          missing.push({ book, lesson });
+        if (!lesson.examples && window.LESSON_EXAMPLES[lesson.title]) {
+          lesson.examples = window.LESSON_EXAMPLES[lesson.title];
+          updated = true;
         }
       }
     }
-
-    if (missing.length === 0) return;
-
-    this.showToast(`Generating examples for ${missing.length} lessons...`);
-
-    for (const { book, lesson } of missing) {
-      try {
-        const systemPrompt = `You are a cross-disciplinary knowledge expert. Given a concept from a book, provide real-world parallels from OTHER contexts.
-
-Book: "${book.title}" by ${book.author}
-Concept: "${lesson.title}"
-Description: ${lesson.body}
-
-Provide exactly 3 real-world examples or parallels from DIFFERENT countries, time periods, industries, or fields that illustrate the same principle. Each must be:
-- A specific, named case (not generic)
-- From a different source than the original book
-- 2-3 sentences explaining the parallel
-
-Format as markdown. Use **bold** for the case name. Start each with a bullet point (- ). No introduction or conclusion, just the 3 examples.`;
-
-        const response = await LLM.chat(
-          [{ role: 'user', content: `Give real-world parallels for: "${lesson.title}"` }],
-          data.settings,
-          systemPrompt
-        );
-
-        Storage.updateData(d => {
-          for (const b of d.books) {
-            const l = b.lessons.find(x => x.id === lesson.id);
-            if (l) { l.examples = response; break; }
-          }
-        });
-      } catch (err) {
-        console.warn(`Failed to generate examples for "${lesson.title}":`, err.message);
-      }
-
-      await new Promise(r => setTimeout(r, 1500));
-    }
-
-    this.showToast('Examples generated');
+    if (updated) Storage.save(data);
   },
 
   seededShuffle(arr, seed) {
@@ -2033,6 +2005,181 @@ Rules:
   openAddBookModal() {
     document.getElementById('add-book-modal').classList.remove('hidden');
     this.pushNav();
+  },
+
+  openAddQuoteModal() {
+    // Reset modal state
+    const modal = document.getElementById('add-quote-modal');
+    modal.querySelector('#aq-quote').value = '';
+    modal.querySelector('#aq-existing-search').value = '';
+    modal.querySelector('#aq-new-search').value = '';
+    modal.querySelector('#aq-existing-results').classList.add('hidden');
+    modal.querySelector('#aq-new-results').classList.add('hidden');
+    modal.querySelector('.aq-selected').classList.add('hidden');
+    modal.querySelector('.aq-selected').innerHTML = '';
+    // Reset to existing mode
+    modal.querySelectorAll('.aq-toggle-btn').forEach(b => b.classList.remove('active'));
+    modal.querySelector('[data-mode="existing"]').classList.add('active');
+    modal.querySelector('#aq-existing').classList.remove('hidden');
+    modal.querySelector('#aq-new').classList.add('hidden');
+    modal.querySelector('#aq-submit').disabled = false;
+    modal.querySelector('#aq-submit').textContent = 'Add to queue';
+    modal.classList.remove('hidden');
+    this.pushNav();
+  },
+
+  // ===== ADD QUOTE =====
+  bindAddQuote() {
+    const modal = document.getElementById('add-quote-modal');
+    if (!modal) return;
+
+    let selectedBook = null;
+    let mode = 'existing';
+    let searchDebounce = null;
+
+    const renderSelected = () => {
+      const el = modal.querySelector('.aq-selected');
+      if (!selectedBook) { el.classList.add('hidden'); el.innerHTML = ''; return; }
+      el.classList.remove('hidden');
+      el.innerHTML = `
+        ${selectedBook.coverUrl ? `<img class="aq-sel-cover" src="${selectedBook.coverUrl}" alt="">` : '<div class="aq-sel-cover-ph"></div>'}
+        <div class="aq-sel-info">
+          <div class="aq-sel-title">${selectedBook.title}</div>
+          <div class="aq-sel-author">${selectedBook.author}</div>
+        </div>
+        <button class="aq-sel-clear">&times;</button>
+      `;
+      el.querySelector('.aq-sel-clear').addEventListener('click', () => {
+        selectedBook = null;
+        renderSelected();
+      });
+    };
+
+    const closeModal = () => {
+      modal.classList.add('hidden');
+      if (history.state && history.state.layer) history.back();
+    };
+
+    modal.querySelector('.modal-overlay').addEventListener('click', closeModal);
+    modal.querySelector('.modal-close').addEventListener('click', closeModal);
+
+    // Toggle existing / new
+    modal.querySelectorAll('.aq-toggle-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        modal.querySelectorAll('.aq-toggle-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        mode = btn.dataset.mode;
+        document.getElementById('aq-existing').classList.toggle('hidden', mode !== 'existing');
+        document.getElementById('aq-new').classList.toggle('hidden', mode !== 'new');
+        selectedBook = null;
+        renderSelected();
+      });
+    });
+
+    // Existing book fuzzy search
+    const existingSearch = document.getElementById('aq-existing-search');
+    const existingResults = document.getElementById('aq-existing-results');
+    existingSearch.addEventListener('input', () => {
+      const q = existingSearch.value.toLowerCase().trim();
+      if (!q) { existingResults.classList.add('hidden'); existingResults.innerHTML = ''; return; }
+      const data = Storage.getData();
+      const matches = data.books.filter(b =>
+        b.title.toLowerCase().includes(q) || (b.author && b.author.toLowerCase().includes(q))
+      ).slice(0, 6);
+      if (!matches.length) { existingResults.classList.add('hidden'); return; }
+      existingResults.innerHTML = matches.map(b => `
+        <div class="aq-result-item" data-book-id="${b.id}">
+          ${b.coverUrl ? `<img class="aq-result-cover" src="${b.coverUrl}" alt="">` : '<div class="aq-result-cover-ph"></div>'}
+          <div class="aq-result-info">
+            <div class="aq-result-title">${b.title}</div>
+            <div class="aq-result-author">${b.author || ''}</div>
+          </div>
+        </div>
+      `).join('');
+      existingResults.classList.remove('hidden');
+      existingResults.querySelectorAll('.aq-result-item').forEach(item => {
+        item.addEventListener('click', () => {
+          const book = data.books.find(b => b.id === item.dataset.bookId);
+          if (!book) return;
+          selectedBook = { title: book.title, author: book.author || '', coverUrl: book.coverUrl || null, isNew: false };
+          existingSearch.value = '';
+          existingResults.classList.add('hidden');
+          renderSelected();
+        });
+      });
+    });
+
+    // New book — Google Books API
+    const newSearch = document.getElementById('aq-new-search');
+    const newResults = document.getElementById('aq-new-results');
+    newSearch.addEventListener('input', () => {
+      clearTimeout(searchDebounce);
+      const q = newSearch.value.trim();
+      if (q.length < 2) { newResults.classList.add('hidden'); newResults.innerHTML = ''; return; }
+      searchDebounce = setTimeout(async () => {
+        try {
+          const res = await fetch(`https://www.googleapis.com/books/v1/volumes?q=${encodeURIComponent(q)}&maxResults=6&langRestrict=en`);
+          const json = await res.json();
+          if (!json.items?.length) { newResults.classList.add('hidden'); return; }
+          newResults.innerHTML = json.items.map(item => {
+            const v = item.volumeInfo || {};
+            const title = v.title || 'Unknown';
+            const author = (v.authors || []).join(', ');
+            const cover = (v.imageLinks?.thumbnail || '').replace('http://', 'https://');
+            return `
+              <div class="aq-result-item" data-title="${title.replace(/"/g, '&quot;')}" data-author="${author.replace(/"/g, '&quot;')}" data-cover="${cover}">
+                ${cover ? `<img class="aq-result-cover" src="${cover}" alt="">` : '<div class="aq-result-cover-ph"></div>'}
+                <div class="aq-result-info">
+                  <div class="aq-result-title">${title}</div>
+                  <div class="aq-result-author">${author}</div>
+                </div>
+              </div>
+            `;
+          }).join('');
+          newResults.classList.remove('hidden');
+          newResults.querySelectorAll('.aq-result-item').forEach(item => {
+            item.addEventListener('click', () => {
+              selectedBook = { title: item.dataset.title, author: item.dataset.author, coverUrl: item.dataset.cover || null, isNew: true };
+              newSearch.value = '';
+              newResults.classList.add('hidden');
+              renderSelected();
+            });
+          });
+        } catch (e) {
+          console.warn('Book search failed:', e);
+        }
+      }, 400);
+    });
+
+    // Submit
+    document.getElementById('aq-submit').addEventListener('click', async () => {
+      const text = document.getElementById('aq-quote').value.trim();
+      if (!text) { this.showToast('Enter a quote'); return; }
+      if (!selectedBook) { this.showToast('Select a book'); return; }
+      const btn = document.getElementById('aq-submit');
+      btn.disabled = true;
+      btn.textContent = 'Saving...';
+      try {
+        await window.Auth.addQuote({
+          text,
+          bookTitle: selectedBook.title,
+          bookAuthor: selectedBook.author,
+          coverUrl: selectedBook.coverUrl,
+          isNewBook: selectedBook.isNew
+        });
+        const count = parseInt(localStorage.getItem('margins_pending_quotes') || '0') + 1;
+        localStorage.setItem('margins_pending_quotes', String(count));
+        this.showToast('Quote added to queue');
+        selectedBook = null;
+        closeModal();
+        if (this.currentTab === 'today') this.renderTab('today');
+      } catch (err) {
+        console.error(err);
+        this.showToast('Failed — are you signed in?');
+        btn.disabled = false;
+        btn.textContent = 'Add to queue';
+      }
+    });
   },
 
   // ===== FAVORITES =====
