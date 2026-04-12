@@ -18,7 +18,7 @@
   <script>
     // Cache buster: force reload when new version is deployed
     (function() {
-      var v = 74;
+      var v = 75;
       var stored = localStorage.getItem('margins_app_version');
       if (stored && parseInt(stored) >= v) return;
       // New version — nuke all caches and reload
@@ -247,37 +247,35 @@
     </div>
   </div>
 
-  <!-- Add Quote modal -->
-  <div id="add-quote-modal" class="modal hidden">
-    <div class="modal-overlay"></div>
-    <div class="modal-content">
-      <div class="modal-header">
-        <h2>Add Quote</h2>
-        <button class="modal-close">&times;</button>
+  <!-- Add Quote Page (full screen, slides in from right) -->
+  <div id="add-quote-page" class="add-quote-page">
+    <div class="add-quote-header">
+      <button id="add-quote-back" class="settings-page-back-btn">‹</button>
+      <h2>Add Quote</h2>
+      <div style="width:40px"></div>
+    </div>
+    <div class="add-quote-body">
+      <div class="form-group">
+        <textarea id="aq-quote" rows="5" placeholder="Paste or type the quote..."></textarea>
       </div>
-      <div class="modal-body">
-        <div class="form-group">
-          <textarea id="aq-quote" rows="5" placeholder="Paste or type the quote..."></textarea>
-        </div>
-        <div class="aq-toggle">
-          <button class="aq-toggle-btn active" data-mode="existing">Existing book</button>
-          <button class="aq-toggle-btn" data-mode="new">New book</button>
-        </div>
-        <div id="aq-existing" class="aq-book-section">
-          <div class="aq-search-wrap">
-            <input type="text" id="aq-existing-search" placeholder="Search your library..." autocomplete="off">
-            <div id="aq-existing-results" class="aq-results hidden"></div>
-          </div>
-        </div>
-        <div id="aq-new" class="aq-book-section hidden">
-          <div class="aq-search-wrap">
-            <input type="text" id="aq-new-search" placeholder="Search for a book..." autocomplete="off">
-            <div id="aq-new-results" class="aq-results hidden"></div>
-          </div>
-        </div>
-        <div class="aq-selected hidden"></div>
-        <button id="aq-submit" class="btn btn-primary aq-submit-btn">Add to queue</button>
+      <div class="aq-toggle">
+        <button class="aq-toggle-btn active" data-mode="existing">Existing book</button>
+        <button class="aq-toggle-btn" data-mode="new">New book</button>
       </div>
+      <div id="aq-existing" class="aq-book-section">
+        <div class="aq-search-wrap">
+          <input type="text" id="aq-existing-search" placeholder="Search your library..." autocomplete="off">
+          <div id="aq-existing-results" class="aq-results hidden"></div>
+        </div>
+      </div>
+      <div id="aq-new" class="aq-book-section hidden">
+        <div class="aq-search-wrap">
+          <input type="text" id="aq-new-search" placeholder="Search for a book..." autocomplete="off">
+          <div id="aq-new-results" class="aq-results hidden"></div>
+        </div>
+      </div>
+      <div class="aq-selected hidden"></div>
+      <button id="aq-submit" class="btn btn-primary aq-submit-btn">Add to queue</button>
     </div>
   </div>
 

@@ -74,6 +74,11 @@ const App = {
       settingsPage.classList.remove('open');
       return;
     }
+    const addQuotePage = document.getElementById('add-quote-page');
+    if (addQuotePage && addQuotePage.classList.contains('open')) {
+      addQuotePage.classList.remove('open');
+      return;
+    }
     // Journey modal
     const journeyModal = document.getElementById('journey-modal');
     if (journeyModal && !journeyModal.classList.contains('hidden')) {
@@ -81,7 +86,7 @@ const App = {
       document.body.style.overflow = '';
       return;
     }
-    const modals = ['chat-modal', 'book-hub-modal', 'add-book-modal', 'add-quote-modal'];
+    const modals = ['chat-modal', 'book-hub-modal', 'add-book-modal'];
     for (const id of modals) {
       const el = document.getElementById(id);
       if (el && !el.classList.contains('hidden')) {
@@ -1076,20 +1081,12 @@ Use **bold** for key terms. Be concise and sharp. No padding or pleasantries.`;
                 </div>
               `;
             }
+            const excerpt = (lesson.body.match(/[^.!?]+[.!?]+/) || [lesson.body])[0]?.trim() || '';
+            const truncated = excerpt.length > 100 ? excerpt.slice(0, 100).trim() + '...' : excerpt;
             return `
-              <div class="hub-lesson-card">
+              <div class="hub-lesson-card" data-lesson-id="${lesson.id}">
                 <div class="hub-lesson-title">${lesson.title}</div>
-                <div class="hub-lesson-body">${this.formatLessonBody(lesson.body)}</div>
-                <div class="followup-prompt" style="margin-top:14px;padding-top:0">
-                  <div class="followup-row">
-                    <button class="followup-btn learn-more-btn" data-lesson-id="${lesson.id}" data-book-id="${bookId}">Learn more</button>
-                    <button class="followup-btn ask-followup" data-lesson-id="${lesson.id}">
-                      <span class="ai-pill-badge">AI</span>
-                      Follow up
-                    </button>
-                  </div>
-                  <div class="learn-more-section hidden" id="learn-more-${lesson.id}"></div>
-                </div>
+                <div class="hub-lesson-excerpt">${truncated}</div>
               </div>
             `;
           };
@@ -1182,12 +1179,12 @@ Use **bold** for key terms. Be concise and sharp. No padding or pleasantries.`;
         });
       });
 
-      // Bind hub lesson learn-more and follow-up
-      content.querySelectorAll('.learn-more-btn').forEach(btn => {
-        btn.addEventListener('click', () => this.handleLearnMore(btn.dataset.lessonId, btn.dataset.bookId));
-      });
-      content.querySelectorAll('.ask-followup').forEach(btn => {
-        btn.addEventListener('click', () => this.openChatWithContext('lesson', btn.dataset.lessonId));
+      // Bind hub lesson cards → journey
+      content.querySelectorAll('.hub-lesson-card[data-lesson-id]').forEach(card => {
+        card.addEventListener('click', () => {
+          closeHub();
+          setTimeout(() => this.openLessonJourney(card.dataset.lessonId), 150);
+        });
       });
 
       // Bind quote toggles
@@ -1995,30 +1992,28 @@ Rules:
   },
 
   openAddQuoteModal() {
-    // Reset modal state
-    const modal = document.getElementById('add-quote-modal');
-    modal.querySelector('#aq-quote').value = '';
-    modal.querySelector('#aq-existing-search').value = '';
-    modal.querySelector('#aq-new-search').value = '';
-    modal.querySelector('#aq-existing-results').classList.add('hidden');
-    modal.querySelector('#aq-new-results').classList.add('hidden');
-    modal.querySelector('.aq-selected').classList.add('hidden');
-    modal.querySelector('.aq-selected').innerHTML = '';
-    // Reset to existing mode
-    modal.querySelectorAll('.aq-toggle-btn').forEach(b => b.classList.remove('active'));
-    modal.querySelector('[data-mode="existing"]').classList.add('active');
-    modal.querySelector('#aq-existing').classList.remove('hidden');
-    modal.querySelector('#aq-new').classList.add('hidden');
-    modal.querySelector('#aq-submit').disabled = false;
-    modal.querySelector('#aq-submit').textContent = 'Add to queue';
-    modal.classList.remove('hidden');
+    const page = document.getElementById('add-quote-page');
+    page.querySelector('#aq-quote').value = '';
+    page.querySelector('#aq-existing-search').value = '';
+    page.querySelector('#aq-new-search').value = '';
+    page.querySelector('#aq-existing-results').classList.add('hidden');
+    page.querySelector('#aq-new-results').classList.add('hidden');
+    page.querySelector('.aq-selected').classList.add('hidden');
+    page.querySelector('.aq-selected').innerHTML = '';
+    page.querySelectorAll('.aq-toggle-btn').forEach(b => b.classList.remove('active'));
+    page.querySelector('[data-mode="existing"]').classList.add('active');
+    page.querySelector('#aq-existing').classList.remove('hidden');
+    page.querySelector('#aq-new').classList.add('hidden');
+    page.querySelector('#aq-submit').disabled = false;
+    page.querySelector('#aq-submit').textContent = 'Add to queue';
+    page.classList.add('open');
     this.pushNav();
   },
 
   // ===== ADD QUOTE =====
   bindAddQuote() {
-    const modal = document.getElementById('add-quote-modal');
-    if (!modal) return;
+    const page = document.getElementById('add-quote-page');
+    if (!page) return;
 
     document.getElementById('add-quote-btn')?.addEventListener('click', () => this.openAddQuoteModal());
 
@@ -2027,7 +2022,7 @@ Rules:
     let searchDebounce = null;
 
     const renderSelected = () => {
-      const el = modal.querySelector('.aq-selected');
+      const el = page.querySelector('.aq-selected');
       if (!selectedBook) { el.classList.add('hidden'); el.innerHTML = ''; return; }
       el.classList.remove('hidden');
       el.innerHTML = `
@@ -2045,21 +2040,20 @@ Rules:
     };
 
     const closeModal = () => {
-      modal.classList.add('hidden');
+      page.classList.remove('open');
       if (history.state && history.state.layer) history.back();
     };
 
-    modal.querySelector('.modal-overlay').addEventListener('click', closeModal);
-    modal.querySelector('.modal-close').addEventListener('click', closeModal);
+    document.getElementById('add-quote-back').addEventListener('click', closeModal);
 
     // Toggle existing / new
-    modal.querySelectorAll('.aq-toggle-btn').forEach(btn => {
+    page.querySelectorAll('.aq-toggle-btn').forEach(btn => {
       btn.addEventListener('click', () => {
         modal.querySelectorAll('.aq-toggle-btn').forEach(b => b.classList.remove('active'));
         btn.classList.add('active');
         mode = btn.dataset.mode;
-        document.getElementById('aq-existing').classList.toggle('hidden', mode !== 'existing');
-        document.getElementById('aq-new').classList.toggle('hidden', mode !== 'new');
+        page.querySelector('#aq-existing').classList.toggle('hidden', mode !== 'existing');
+        page.querySelector('#aq-new').classList.toggle('hidden', mode !== 'new');
         selectedBook = null;
         renderSelected();
       });
