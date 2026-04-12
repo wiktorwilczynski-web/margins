@@ -1,7 +1,7 @@
 {
-  "name": "books",
-  "short_name": "books",
-  "description": "A personal reading memory app",
+  "name": "Reread",
+  "short_name": "Reread",
+  "description": "Your personal reading memory",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#FFFFFF",

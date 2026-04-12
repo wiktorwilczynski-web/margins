@@ -1081,12 +1081,27 @@ label {
   background: var(--bg-card);
   border: 1px solid var(--border);
   border-radius: var(--radius);
-  padding: 20px 18px;
+  padding: 0;
   width: 100%;
   max-height: 75vh;
-  overflow-y: auto;
+  overflow: hidden;
   box-shadow: var(--shadow-lg);
 }
+
+.lp-content {
+  padding: 20px 18px;
+  overflow: hidden;
+}
+
+.lp-cover-inline {
+  float: right;
+  width: 62px;
+  height: auto;
+  border-radius: 4px;
+  margin: 2px 0 10px 14px;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.38);
+}
+.lp-cover-inline.hidden { display: none; }
 
 .lp-title {
   font-family: var(--font-body);
@@ -4059,8 +4074,8 @@ label {
 }
 
 @keyframes journeyOpen {
-  from { opacity: 0; transform: scale(1.04); }
-  to { opacity: 1; transform: scale(1); }
+  from { opacity: 0; }
+  to { opacity: 1; }
 }
 
 .journey-modal.hidden { display: none; }
@@ -4338,6 +4353,93 @@ label {
   margin-bottom: var(--space-4);
 }
 
+/* Parsed markdown in THE IDEA body — matches GOING DEEPER formatting */
+.j-idea-body p {
+  font-size: 15px;
+  line-height: 1.8;
+  color: var(--j-text-secondary);
+  margin-bottom: var(--space-4);
+}
+.j-idea-body p:last-child { margin-bottom: 0; }
+.j-idea-body strong { color: var(--j-text); font-weight: 600; }
+.j-idea-body em { font-style: italic; }
+.j-idea-body h4 { font-size: 13px; font-weight: 700; color: var(--j-text); text-transform: uppercase; letter-spacing: 1px; margin-bottom: var(--space-2); }
+.j-idea-body ul { padding-left: 18px; margin-bottom: var(--space-4); }
+.j-idea-body li { font-size: 15px; line-height: 1.7; color: var(--j-text-secondary); margin-bottom: var(--space-2); }
+.j-idea-body li strong { color: var(--j-text); font-weight: 600; }
+
+/* Bold inside the key point card */
+.j-idea-keypoint strong { color: var(--j-text); font-weight: 700; }
+
+/* ---- Concept Spotlight (THE IDEA scene) ---- */
+.j-concept-spotlight {
+  margin-top: var(--space-6);
+  padding: var(--space-5);
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: var(--radius);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  animation: contentReveal 0.5s var(--ease-out) 0.3s both;
+}
+
+:root:not([data-theme="dark"]) .j-concept-spotlight {
+  background: rgba(79, 70, 229, 0.04);
+  border-color: rgba(79, 70, 229, 0.12);
+}
+
+.j-concept-tag {
+  font-size: 9px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1.8px;
+  color: var(--accent-light);
+  margin-bottom: var(--space-2);
+}
+
+.j-concept-term {
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--j-text);
+  letter-spacing: -0.4px;
+  line-height: 1.2;
+  margin-bottom: var(--space-3);
+}
+
+.j-concept-divider {
+  width: 28px;
+  height: 2px;
+  background: var(--accent);
+  border-radius: 1px;
+  margin-bottom: var(--space-4);
+  opacity: 0.6;
+}
+
+.j-concept-what {
+  font-size: 14px;
+  line-height: 1.65;
+  color: var(--j-text-secondary);
+  margin-bottom: var(--space-3);
+}
+
+.j-concept-origin {
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--j-text-muted);
+  margin: 0;
+}
+
+.j-concept-origin-label {
+  font-weight: 600;
+  color: var(--j-text-secondary);
+  margin-right: 3px;
+}
+
+/* Ensure journey text is always selectable with correct hit regions */
+.j-hook-title, .j-hook-excerpt, .j-idea-keypoint, .j-idea-body,
+.j-deeper-content, .j-examples-content, .lesson-sentence {
+  user-select: text;
+  -webkit-user-select: text;
+}
+
 /* ---- Scene 3: Going Deeper ---- */
 .j-deeper {
   padding: var(--space-4) 0;
@@ -4528,8 +4630,8 @@ label {
 
 /* Scene enter animations */
 @keyframes contentReveal {
-  from { opacity: 0; transform: translateY(12px); }
-  to { opacity: 1; transform: translateY(0); }
+  from { opacity: 0; }
+  to { opacity: 1; }
 }
 
 /* Legacy styles kept for compatibility */

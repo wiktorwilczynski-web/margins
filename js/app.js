@@ -1,4 +1,4 @@
-// app.js — Main logic, routing, state for Margins
+// app.js — Main logic, routing, state for Reread
 
 const App = {
   currentTab: 'today',
@@ -244,8 +244,9 @@ const App = {
     if (favIds.length === 0) {
       html += `<div class="home-saved-empty">Tap ♡ on any lesson to save it here</div>`;
     } else {
+      // Reverse so newest saves appear first
       const favLessons = [];
-      for (const fid of favIds) {
+      for (const fid of [...favIds].reverse()) {
         for (const book of data.books) {
           const l = book.lessons.find(x => x.id === fid);
           if (l) { favLessons.push({ lesson: l, book }); break; }
@@ -253,7 +254,7 @@ const App = {
       }
       if (favLessons.length > 0) {
         html += `<div class="home-saved-list">`;
-        for (const { lesson, book } of favLessons.slice(0, 4)) {
+        for (const { lesson, book } of favLessons) {
           const excerpt = (lesson.body.match(/[^.!?]+[.!?]+/) || [lesson.body])[0]?.trim() || '';
           html += `
             <div class="home-saved-item" data-lesson-id="${lesson.id}">
@@ -290,6 +291,7 @@ const App = {
         const isFav = this.isFavorite(heroFav.dataset.lessonId);
         heroFav.innerHTML = isFav ? '♥ Saved' : '♡ Save';
         heroFav.classList.toggle('is-fav', isFav);
+        this.refreshSavedSection();
       });
     }
 
@@ -330,6 +332,15 @@ const App = {
     const hookSentence = (lesson.body.match(/[^.!?]+[.!?]+/) || [lesson.body])[0]?.trim() || '';
     document.getElementById('lp-body').textContent = hookSentence;
 
+    // Inline cover (floats right alongside title/body)
+    const coverInline = document.getElementById('lp-cover-inline');
+    if (book?.coverUrl) {
+      coverInline.src = book.coverUrl;
+      coverInline.classList.remove('hidden');
+    } else {
+      coverInline.classList.add('hidden');
+    }
+
     const isFav = this.isFavorite(lessonId);
     const favBtn = document.getElementById('lp-fav');
     favBtn.textContent = isFav ? '♥ Saved' : '♡ Save';
@@ -350,6 +361,7 @@ const App = {
       const nowFav = this.isFavorite(lessonId);
       favBtn.textContent = nowFav ? '♥ Saved' : '♡ Save';
       favBtn.classList.toggle('is-fav', nowFav);
+      this.refreshSavedSection();
     };
     document.getElementById('lp-chat').onclick = () => {
       closePreview();
@@ -428,23 +440,39 @@ const App = {
       `
     });
 
-    // Scene 2: THE IDEA — key point card + body
+    // Scene 2: THE IDEA — key point card + body + concept spotlight
     const allSentences = lesson.body.match(/[^.!?]+[.!?]+/g) || [lesson.body];
     const keyPointText = allSentences[0]?.trim() || '';
-    const restHtml = allSentences.slice(1).map(s => `<div class="lesson-sentence">${s.trim()}</div>`).join('');
+    // Apply full markdown parsing to the rest of the body (same as GOING DEEPER)
+    const restBody = allSentences.slice(1).join(' ').trim();
+    const restHtml = restBody ? this.parseMarkdown(restBody) : '';
+    // Also apply bold parsing to the key point card text
+    const keyPointHtml = keyPointText ? keyPointText.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>') : '';
+
+    const conceptData = window.LESSON_CONCEPTS?.[lesson.title];
+    const conceptHtml = conceptData ? `
+      <div class="j-concept-spotlight">
+        <div class="j-concept-tag">Concept</div>
+        <div class="j-concept-term">${conceptData.term}</div>
+        <div class="j-concept-divider"></div>
+        <p class="j-concept-what">${conceptData.what}</p>
+        <p class="j-concept-origin"><span class="j-concept-origin-label">Origins</span> ${conceptData.origin}</p>
+      </div>
+    ` : '';
 
     scenes.push({
       type: 'concept',
       html: `
         <div class="j-idea">
           <div class="j-idea-label">The idea</div>
-          ${keyPointText ? `
+          ${keyPointHtml ? `
             <div class="j-idea-keypoint">
               <div class="j-idea-keypoint-label">Key point</div>
-              ${keyPointText}
+              ${keyPointHtml}
             </div>
           ` : ''}
           ${restHtml ? `<div class="j-idea-body">${restHtml}</div>` : ''}
+          ${conceptHtml}
         </div>
       `
     });
@@ -491,7 +519,7 @@ const App = {
           <div class="j-src-actions">
             <button class="journey-s-btn primary" id="j-explore" data-book-id="${book.id}">Explore this book</button>
             <button class="journey-s-btn secondary" id="j-fav" data-lesson-id="${lesson.id}">${this.isFavorite(lesson.id) ? '♥ Saved' : '♡ Save lesson'}</button>
-            <button class="journey-s-btn secondary" id="j-share">Share as image</button>
+            <button class="journey-s-btn secondary" id="j-home">Back to home</button>
           </div>
         </div>
       `
@@ -541,8 +569,12 @@ const App = {
           const isFav = this.isFavorite(btn.dataset.lessonId);
           btn.textContent = isFav ? '♥ Saved' : '♡ Save lesson';
         });
-        document.getElementById('j-share')?.addEventListener('click', () => {
-          this.shareAsImage(lesson, book);
+        document.getElementById('j-home')?.addEventListener('click', () => {
+          closeJourney();
+          // Navigate to today/home tab
+          document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+          document.querySelector('.tab-btn[data-tab="today"]')?.classList.add('active');
+          this.renderTab('today');
         });
       }
     };
@@ -665,7 +697,7 @@ const App = {
     // App branding
     ctx.fillStyle = isDark ? '#555560' : '#A0A0AB';
     ctx.font = 'italic 13px Georgia, serif';
-    ctx.fillText('margins', pad, h - pad);
+    ctx.fillText('Reread', pad, h - pad);
 
     // Convert to blob and share or download
     canvas.toBlob(async (blob) => {
@@ -2272,69 +2304,86 @@ Use **bold** for key terms. Be concise and sharp. No padding or pleasantries.`;
     } else if (tab === 'find') {
       container.innerHTML = `
         <div class="friend-search-wrap">
-          <input type="text" id="friend-search-input" class="friend-search-input" placeholder="Search by username…" autocapitalize="none" spellcheck="false">
+          <input type="text" id="friend-search-input" class="friend-search-input" placeholder="Filter by username…" autocapitalize="none" spellcheck="false">
         </div>
-        <div id="friend-search-results"></div>
+        <div id="friend-search-results"><div class="friends-loading">Loading…</div></div>
       `;
-      let searchTimeout;
-      document.getElementById('friend-search-input').addEventListener('input', (e) => {
-        clearTimeout(searchTimeout);
-        const val = e.target.value.trim();
-        if (!val) { document.getElementById('friend-search-results').innerHTML = ''; return; }
-        searchTimeout = setTimeout(() => this.doFriendSearch(val), 400);
+
+      // Load all users + relationship state immediately
+      this._allUsersCache = null;
+      this.loadAllPeople().then(() => {
+        const input = document.getElementById('friend-search-input');
+        if (input) {
+          input.addEventListener('input', (e) => {
+            this.renderPeopleList(e.target.value.trim().toLowerCase());
+          });
+        }
       });
     }
   },
 
-  async doFriendSearch(searchQuery) {
-    const resultsEl = document.getElementById('friend-search-results');
-    if (!resultsEl) return;
-    resultsEl.innerHTML = '<div class="friends-loading">Searching…</div>';
-
+  async loadAllPeople() {
     try {
-      const [users, outgoing, friends] = await Promise.all([
-        window.Auth?.searchUsers?.(searchQuery) || [],
+      const [allUsers, outgoing, friends] = await Promise.all([
+        window.Auth?.getAllUsers?.() || [],
         window.Auth?.getOutgoingRequests?.() || [],
         window.Auth?.getFriends?.() || []
       ]);
-
-      const sentToUids = new Set(outgoing.map(r => r.to));
-      const friendUids = new Set(friends.map(f => f.uid));
-
-      if (users.length === 0) {
-        resultsEl.innerHTML = '<div class="friends-empty">No users found.</div>';
-        return;
-      }
-
-      resultsEl.innerHTML = users.map(u => {
-        const isFriend = friendUids.has(u.uid);
-        const isPending = sentToUids.has(u.uid);
-        const badge = isFriend
-          ? '<div class="friend-pending-badge friend-badge-accepted">Friends</div>'
-          : isPending
-            ? '<div class="friend-pending-badge">Pending</div>'
-            : `<button class="friend-btn friend-btn-add" data-uid="${u.uid}" data-uname="${u.username}">Add</button>`;
-        return `
-          <div class="friend-item">
-            <div class="friend-avatar">${u.username.substring(0, 2).toUpperCase()}</div>
-            <div class="friend-username">@${u.username}</div>
-            ${badge}
-          </div>
-        `;
-      }).join('');
-
-      resultsEl.querySelectorAll('.friend-btn-add').forEach(btn => {
-        btn.addEventListener('click', async () => {
-          btn.disabled = true;
-          btn.textContent = '…';
-          await window.Auth?.sendFriendRequest?.(btn.dataset.uid, btn.dataset.uname);
-          btn.textContent = 'Pending';
-          btn.className = 'friend-pending-badge';
-        });
-      });
+      this._allUsersCache = { allUsers, outgoing, friends };
+      this.renderPeopleList('');
     } catch (e) {
-      resultsEl.innerHTML = '<div class="friends-empty">Search failed. Try again.</div>';
+      const el = document.getElementById('friend-search-results');
+      if (el) el.innerHTML = '<div class="friends-empty">Failed to load users.</div>';
     }
+  },
+
+  renderPeopleList(filter) {
+    const resultsEl = document.getElementById('friend-search-results');
+    if (!resultsEl || !this._allUsersCache) return;
+
+    const { allUsers, outgoing, friends } = this._allUsersCache;
+    const sentToUids = new Set(outgoing.map(r => r.to));
+    const friendUids = new Set(friends.map(f => f.uid));
+
+    const visible = filter
+      ? allUsers.filter(u => u.username.toLowerCase().includes(filter))
+      : allUsers;
+
+    if (visible.length === 0) {
+      resultsEl.innerHTML = '<div class="friends-empty">No users found.</div>';
+      return;
+    }
+
+    resultsEl.innerHTML = visible.map(u => {
+      const isFriend = friendUids.has(u.uid);
+      const isPending = sentToUids.has(u.uid);
+      const badge = isFriend
+        ? '<div class="friend-pending-badge friend-badge-accepted">Friends</div>'
+        : isPending
+          ? '<div class="friend-pending-badge">Pending</div>'
+          : `<button class="friend-btn friend-btn-add" data-uid="${u.uid}" data-uname="${u.username}">Add</button>`;
+      return `
+        <div class="friend-item">
+          <div class="friend-avatar">${u.username.substring(0, 2).toUpperCase()}</div>
+          <div class="friend-username">@${u.username}</div>
+          ${badge}
+        </div>
+      `;
+    }).join('');
+
+    resultsEl.querySelectorAll('.friend-btn-add').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        btn.disabled = true;
+        btn.textContent = '…';
+        await window.Auth?.sendFriendRequest?.(btn.dataset.uid, btn.dataset.uname);
+        // Update cache to reflect pending state
+        if (this._allUsersCache) {
+          this._allUsersCache.outgoing.push({ to: btn.dataset.uid });
+        }
+        btn.textContent = 'Pending';
+        btn.className = 'friend-pending-badge';
+      });
+    });
   },
 
   applyTheme() {
@@ -2713,6 +2762,46 @@ Rules:
   isFavorite(lessonId) {
     const data = Storage.getData();
     return (data.favorites || []).includes(lessonId);
+  },
+
+  // Re-render just the saved section in-place (no full tab re-render)
+  refreshSavedSection() {
+    if (this.currentTab !== 'today') return;
+    const data = Storage.getData();
+    const favIds = data.favorites || [];
+    const container = document.querySelector('.home-saved-list') || document.querySelector('.home-saved-empty');
+    if (!container) return;
+    const parent = container.parentElement;
+    if (!parent) return;
+
+    if (favIds.length === 0) {
+      parent.innerHTML = `<div class="home-saved-empty">Tap ♡ on any lesson to save it here</div>`;
+      return;
+    }
+    const favLessons = [];
+    for (const fid of [...favIds].reverse()) {
+      for (const book of data.books) {
+        const l = book.lessons.find(x => x.id === fid);
+        if (l) { favLessons.push({ lesson: l, book }); break; }
+      }
+    }
+    let html = `<div class="home-saved-list">`;
+    for (const { lesson, book } of favLessons) {
+      const excerpt = (lesson.body.match(/[^.!?]+[.!?]+/) || [lesson.body])[0]?.trim() || '';
+      html += `
+        <div class="home-saved-item" data-lesson-id="${lesson.id}">
+          <div class="home-saved-title">${lesson.title}</div>
+          <div class="home-saved-excerpt">${excerpt}</div>
+          <div class="home-saved-source">${book.title}</div>
+        </div>
+      `;
+    }
+    html += `</div>`;
+    parent.innerHTML = html;
+    // Re-bind click handlers for the new saved items
+    parent.querySelectorAll('.home-saved-item').forEach(item => {
+      item.addEventListener('click', () => this.openLessonPreview(item.dataset.lessonId));
+    });
   },
 
   toggleFavorite(lessonId) {

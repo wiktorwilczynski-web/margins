@@ -5,24 +5,24 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
-  <meta name="apple-mobile-web-app-title" content="books">
+  <meta name="apple-mobile-web-app-title" content="Reread">
   <meta name="theme-color" content="#0A0A0A">
-  <title>books</title>
+  <title>Reread</title>
   <link rel="manifest" href="manifest.json">
   <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
   <link rel="apple-touch-icon" sizes="180x180" href="icons/apple-touch-icon.png">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300;14..32,400;14..32,500;14..32,600;14..32,700;14..32,800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="css/styles.css?v=104">
+  <link rel="stylesheet" href="css/styles.css?v=112">
   <script>
     // Cache buster: force reload when new version is deployed
     (function() {
-      var v = 104;
-      var stored = localStorage.getItem('margins_app_version');
+      var v = 112;
+      var stored = localStorage.getItem('reread_app_version');
       if (stored && parseInt(stored) >= v) return;
       // New version — nuke all caches and reload
-      localStorage.setItem('margins_app_version', String(v));
+      localStorage.setItem('reread_app_version', String(v));
       if ('caches' in window) {
         caches.keys().then(function(keys) {
           return Promise.all(keys.map(function(k) { return caches.delete(k); }));
@@ -303,18 +303,21 @@
   <!-- Lesson Preview modal (centered popup) -->
   <div id="lesson-preview-modal" class="lp-overlay hidden">
     <div class="lp-card">
-      <div class="lp-title" id="lp-title"></div>
-      <div class="lp-body" id="lp-body"></div>
-      <div class="lp-actions">
-        <button class="home-hero-cta hub-journey-btn" id="lp-journey">
-          Begin journey
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
-        </button>
-        <button class="home-action-pill" id="lp-fav">♡ Save</button>
-        <button class="home-action-pill" id="lp-chat">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
-          Ask AI
-        </button>
+      <div class="lp-content">
+        <img class="lp-cover-inline hidden" id="lp-cover-inline" src="" alt="">
+        <div class="lp-title" id="lp-title"></div>
+        <div class="lp-body" id="lp-body"></div>
+        <div class="lp-actions">
+          <button class="home-hero-cta hub-journey-btn" id="lp-journey">
+            Begin journey
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+          </button>
+          <button class="home-action-pill" id="lp-fav">♡ Save</button>
+          <button class="home-action-pill" id="lp-chat">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+            Ask AI
+          </button>
+        </div>
       </div>
     </div>
   </div>
@@ -347,6 +350,7 @@
   <script src="js/examples.js"></script>
   <script src="js/details.js"></script>
   <script src="js/chapters.js"></script>
+  <script src="js/concepts.js"></script>
   <script src="js/auth.js" type="module"></script>
   <script src="js/app.js"></script>
 </body>

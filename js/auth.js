@@ -1,4 +1,4 @@
-// auth.js — Firebase Auth + Firestore for Margins (ES module)
+// auth.js — Firebase Auth + Firestore for Reread (ES module)
 
 import { initializeApp } from '../firebase/firebase-app.js';
 import {
@@ -31,6 +31,7 @@ const db = initializeFirestore(fireApp, {
 let currentUserId = null;
 let syncInProgress = false;
 let unsubscribeSnapshot = null;
+let lastSyncedTimestamp = null; // tracks our own writes to avoid onSnapshot re-render loops
 
 function usernameToEmail(username) {
   return username.toLowerCase().trim() + '@margins.app';
@@ -43,10 +44,11 @@ async function syncToCloud() {
   syncInProgress = true;
   try {
     const data = Storage.getData();
-    await setDoc(doc(db, 'users', currentUserId), {
-      ...data,
-      lastSync: new Date().toISOString()
-    });
+    const lastSync = new Date().toISOString();
+    // Set BEFORE the write so the onSnapshot (which can fire before await resolves)
+    // already sees this timestamp and ignores our own write
+    lastSyncedTimestamp = lastSync;
+    await setDoc(doc(db, 'users', currentUserId), { ...data, lastSync });
   } catch (e) {
     console.error('Sync to cloud failed:', e);
   }
@@ -73,16 +75,28 @@ function startRealtimeSync() {
   unsubscribeSnapshot = onSnapshot(doc(db, 'users', currentUserId), (snap) => {
     if (!snap.exists() || syncInProgress) return;
     const cloudData = snap.data();
+
+    // If this snapshot was triggered by our own syncToCloud write, ignore it
+    if (cloudData.lastSync && cloudData.lastSync === lastSyncedTimestamp) return;
+
     const localData = Storage.getData();
 
     // If cloud is newer, merge it — but DON'T trigger syncToCloud
     if (cloudData.lastSync && (!localData.lastSync || cloudData.lastSync > localData.lastSync)) {
       cloudData.settings = cloudData.settings || localData.settings;
+      // Apply curated detail/example overrides INLINE before saving to localStorage.
+      // We do this here rather than calling applyDetails()/applyExamples() because those
+      // go through Storage.save() → syncToCloud() → another snapshot → infinite loop.
+      try {
+        for (const book of cloudData.books || []) {
+          for (const lesson of book.lessons || []) {
+            if (window.LESSON_DETAILS?.[lesson.title]) lesson.detail = window.LESSON_DETAILS[lesson.title];
+            if (window.LESSON_EXAMPLES?.[lesson.title]) lesson.examples = window.LESSON_EXAMPLES[lesson.title];
+          }
+        }
+      } catch (e) { /* non-fatal */ }
       // Save locally without triggering cloud sync (avoid infinite loop)
       localStorage.setItem('margins_data', JSON.stringify(cloudData));
-      // Re-apply curated details + examples in case cloud data has stale nulls
-      if (window.App && window.App.applyDetails) window.App.applyDetails();
-      if (window.App && window.App.applyExamples) window.App.applyExamples();
       // Re-render current tab
       if (window.App && window.App.currentTab) {
         window.App.renderTab(window.App.currentTab);
@@ -104,7 +118,7 @@ function showAuthScreen() {
   function renderForm() {
     if (isRegister) {
       container.innerHTML = `
-        <h1 class="auth-title">books</h1>
+        <h1 class="auth-title">Reread</h1>
         <p class="auth-subtitle">your reading memory</p>
         <div class="auth-fields">
           <input type="text" id="auth-username" class="auth-input" placeholder="choose a username" maxlength="30" autocomplete="username" autocapitalize="none" spellcheck="false">
@@ -115,7 +129,7 @@ function showAuthScreen() {
       `;
     } else {
       container.innerHTML = `
-        <h1 class="auth-title">books</h1>
+        <h1 class="auth-title">Reread</h1>
         <p class="auth-subtitle">your reading memory</p>
         <div class="auth-fields">
           <input type="text" id="auth-username" class="auth-input" placeholder="username" maxlength="30" autocomplete="username" autocapitalize="none" spellcheck="false">
@@ -278,6 +292,14 @@ async function searchUsers(usernameQuery) {
   } catch (e) { return []; }
 }
 
+async function getAllUsers() {
+  if (!currentUserId) return [];
+  try {
+    const snap = await getDocs(collection(db, 'profiles'));
+    return snap.docs.map(d => d.data()).filter(p => p.uid !== currentUserId);
+  } catch (e) { return []; }
+}
+
 async function sendFriendRequest(toUid, toUsername) {
   if (!currentUserId) return;
   const myProfile = await getMyProfile();
@@ -365,6 +387,7 @@ window.Auth = {
   getPendingQuotes,
   getMyProfile,
   searchUsers,
+  getAllUsers,
   sendFriendRequest,
   getIncomingRequests,
   getOutgoingRequests,

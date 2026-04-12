@@ -1,4 +1,4 @@
-// storage.js — localStorage helpers for Margins
+// storage.js — localStorage helpers for Reread
 
 const STORAGE_KEY = 'margins_data';
 
