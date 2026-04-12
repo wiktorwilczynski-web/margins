@@ -7,8 +7,8 @@ import {
 } from '../firebase/firebase-auth.js';
 import {
   initializeFirestore, persistentLocalCache, persistentSingleTabManager,
-  doc, getDoc, setDoc, onSnapshot,
-  collection, addDoc, query, where, getDocs
+  doc, getDoc, setDoc, onSnapshot, updateDoc,
+  collection, addDoc, query, where, getDocs, limit
 } from '../firebase/firebase-firestore.js';
 
 const firebaseConfig = {
@@ -219,6 +219,9 @@ onAuthStateChanged(auth, async (user) => {
       await syncToCloud();
     }
 
+    // Ensure public profile exists
+    ensureProfile().catch(() => {});
+
     // Start real-time sync
     startRealtimeSync();
 
@@ -238,6 +241,96 @@ onAuthStateChanged(auth, async (user) => {
     showAuthScreen();
   }
 });
+
+// ===== Social / Friends =====
+
+async function ensureProfile() {
+  if (!currentUserId || !auth.currentUser) return null;
+  const username = auth.currentUser.email.split('@')[0];
+  const profileRef = doc(db, 'profiles', currentUserId);
+  const snap = await getDoc(profileRef);
+  if (!snap.exists()) {
+    const profile = { uid: currentUserId, username, createdAt: new Date().toISOString() };
+    await setDoc(profileRef, profile);
+    return profile;
+  }
+  return snap.data();
+}
+
+async function getMyProfile() {
+  if (!currentUserId || !auth.currentUser) return null;
+  try {
+    return await ensureProfile();
+  } catch (e) {
+    const username = auth.currentUser?.email?.split('@')[0] || '?';
+    return { uid: currentUserId, username };
+  }
+}
+
+async function searchUsers(usernameQuery) {
+  if (!currentUserId || !usernameQuery || usernameQuery.length < 2) return [];
+  const q = usernameQuery.toLowerCase().trim();
+  try {
+    const snap = await getDocs(
+      query(collection(db, 'profiles'), where('username', '>=', q), where('username', '<=', q + '\uf8ff'), limit(10))
+    );
+    return snap.docs.map(d => d.data()).filter(p => p.uid !== currentUserId);
+  } catch (e) { return []; }
+}
+
+async function sendFriendRequest(toUid, toUsername) {
+  if (!currentUserId) return;
+  const myProfile = await getMyProfile();
+  const myUsername = myProfile?.username || auth.currentUser?.email?.split('@')[0] || 'unknown';
+  // Prevent duplicates
+  const existing = await getDocs(
+    query(collection(db, 'friendRequests'), where('from', '==', currentUserId), where('to', '==', toUid))
+  );
+  if (!existing.empty) return;
+  await addDoc(collection(db, 'friendRequests'), {
+    from: currentUserId, to: toUid,
+    fromUsername: myUsername, toUsername,
+    status: 'pending', createdAt: new Date().toISOString()
+  });
+}
+
+async function getIncomingRequests() {
+  if (!currentUserId) return [];
+  try {
+    const snap = await getDocs(
+      query(collection(db, 'friendRequests'), where('to', '==', currentUserId), where('status', '==', 'pending'))
+    );
+    return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+  } catch (e) { return []; }
+}
+
+async function getOutgoingRequests() {
+  if (!currentUserId) return [];
+  try {
+    const snap = await getDocs(
+      query(collection(db, 'friendRequests'), where('from', '==', currentUserId), where('status', '==', 'pending'))
+    );
+    return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+  } catch (e) { return []; }
+}
+
+async function respondToRequest(requestId, accept) {
+  await updateDoc(doc(db, 'friendRequests', requestId), { status: accept ? 'accepted' : 'declined' });
+}
+
+async function getFriends() {
+  if (!currentUserId) return [];
+  try {
+    const [sentSnap, receivedSnap] = await Promise.all([
+      getDocs(query(collection(db, 'friendRequests'), where('from', '==', currentUserId), where('status', '==', 'accepted'))),
+      getDocs(query(collection(db, 'friendRequests'), where('to', '==', currentUserId), where('status', '==', 'accepted')))
+    ]);
+    const friends = [];
+    sentSnap.docs.forEach(d => { const data = d.data(); friends.push({ uid: data.to, username: data.toUsername }); });
+    receivedSnap.docs.forEach(d => { const data = d.data(); friends.push({ uid: data.from, username: data.fromUsername }); });
+    return friends;
+  } catch (e) { return []; }
+}
 
 // ===== Quote Queue (Firestore) =====
 
@@ -267,6 +360,14 @@ window.Auth = {
   syncToCloud,
   signOut: () => signOut(auth),
   get currentUserId() { return currentUserId; },
+  get currentUsername() { return auth.currentUser?.email?.split('@')[0] || null; },
   addQuote,
-  getPendingQuotes
+  getPendingQuotes,
+  getMyProfile,
+  searchUsers,
+  sendFriendRequest,
+  getIncomingRequests,
+  getOutgoingRequests,
+  respondToRequest,
+  getFriends
 };

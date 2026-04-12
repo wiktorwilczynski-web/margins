@@ -2053,7 +2053,9 @@ Use **bold** for key terms. Be concise and sharp. No padding or pleasantries.`;
       });
 
       // Reset to main settings pane
-      document.getElementById('settings-panes').classList.remove('show-sub');
+      const panes = document.getElementById('settings-panes');
+      panes.classList.remove('show-sub');
+      panes.classList.remove('show-account');
       page.classList.add('open');
       this.pushNav();
     };
@@ -2069,6 +2071,16 @@ Use **bold** for key terms. Be concise and sharp. No padding or pleasantries.`;
     // Gemini key
     document.getElementById('gemini-key').addEventListener('change', (e) => {
       Storage.updateData(d => { d.settings.geminiApiKey = e.target.value; });
+    });
+
+    // Account sub-pane navigation
+    document.getElementById('nav-account').addEventListener('click', () => {
+      document.getElementById('settings-panes').classList.add('show-account');
+      this.renderAccountPane();
+    });
+
+    document.getElementById('account-back').addEventListener('click', () => {
+      document.getElementById('settings-panes').classList.remove('show-account');
     });
 
     // iOS-style API Keys sub-page navigation
@@ -2150,6 +2162,179 @@ Use **bold** for key terms. Be concise and sharp. No padding or pleasantries.`;
       }
     });
 
+  },
+
+  // ===== ACCOUNT HUB =====
+
+  async renderAccountPane() {
+    const content = document.getElementById('account-pane-content');
+    if (!content) return;
+    content.innerHTML = '<div class="account-loading">Loading…</div>';
+
+    const profile = await window.Auth?.getMyProfile?.();
+    const username = profile?.username || window.Auth?.currentUsername || '?';
+    const initials = username.substring(0, 2).toUpperCase();
+
+    content.innerHTML = `
+      <div class="account-profile">
+        <div class="account-avatar">${initials}</div>
+        <div class="account-info">
+          <div class="account-username">@${username}</div>
+        </div>
+      </div>
+      <div class="friends-section-title">Friends</div>
+      <div class="friends-tab-bar">
+        <button class="friends-tab-btn active" data-friends-tab="friends">Friends</button>
+        <button class="friends-tab-btn" data-friends-tab="requests">Requests</button>
+        <button class="friends-tab-btn" data-friends-tab="find">Find People</button>
+      </div>
+      <div id="friends-tab-content"></div>
+    `;
+
+    content.querySelectorAll('.friends-tab-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        content.querySelectorAll('.friends-tab-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        this.renderFriendsTab(btn.dataset.friendsTab);
+      });
+    });
+
+    this.renderFriendsTab('friends');
+  },
+
+  async renderFriendsTab(tab) {
+    const container = document.getElementById('friends-tab-content');
+    if (!container) return;
+    container.innerHTML = '<div class="friends-loading">Loading…</div>';
+
+    if (tab === 'friends') {
+      const friends = await window.Auth?.getFriends?.() || [];
+      if (friends.length === 0) {
+        container.innerHTML = '<div class="friends-empty">No friends yet. Find people to add!</div>';
+      } else {
+        container.innerHTML = friends.map(f => `
+          <div class="friend-item">
+            <div class="friend-avatar">${f.username.substring(0, 2).toUpperCase()}</div>
+            <div class="friend-username">@${f.username}</div>
+            <div class="friend-pending-badge friend-badge-accepted">Friends</div>
+          </div>
+        `).join('');
+      }
+
+    } else if (tab === 'requests') {
+      const [incoming, outgoing] = await Promise.all([
+        window.Auth?.getIncomingRequests?.() || [],
+        window.Auth?.getOutgoingRequests?.() || []
+      ]);
+
+      let html = '';
+      if (incoming.length > 0) {
+        html += '<div class="friends-group-label">Incoming</div>';
+        html += incoming.map(r => `
+          <div class="friend-item">
+            <div class="friend-avatar">${r.fromUsername.substring(0, 2).toUpperCase()}</div>
+            <div class="friend-username">@${r.fromUsername}</div>
+            <div class="friend-request-actions">
+              <button class="friend-btn friend-btn-accept" data-req-id="${r.id}">Accept</button>
+              <button class="friend-btn friend-btn-decline" data-req-id="${r.id}">Decline</button>
+            </div>
+          </div>
+        `).join('');
+      }
+      if (outgoing.length > 0) {
+        html += '<div class="friends-group-label">Sent</div>';
+        html += outgoing.map(r => `
+          <div class="friend-item">
+            <div class="friend-avatar">${r.toUsername.substring(0, 2).toUpperCase()}</div>
+            <div class="friend-username">@${r.toUsername}</div>
+            <div class="friend-pending-badge">Pending</div>
+          </div>
+        `).join('');
+      }
+      if (!html) html = '<div class="friends-empty">No pending requests.</div>';
+      container.innerHTML = html;
+
+      container.querySelectorAll('.friend-btn-accept').forEach(btn => {
+        btn.addEventListener('click', async () => {
+          btn.disabled = true;
+          await window.Auth?.respondToRequest?.(btn.dataset.reqId, true);
+          this.renderFriendsTab('requests');
+        });
+      });
+      container.querySelectorAll('.friend-btn-decline').forEach(btn => {
+        btn.addEventListener('click', async () => {
+          btn.disabled = true;
+          await window.Auth?.respondToRequest?.(btn.dataset.reqId, false);
+          this.renderFriendsTab('requests');
+        });
+      });
+
+    } else if (tab === 'find') {
+      container.innerHTML = `
+        <div class="friend-search-wrap">
+          <input type="text" id="friend-search-input" class="friend-search-input" placeholder="Search by username…" autocapitalize="none" spellcheck="false">
+        </div>
+        <div id="friend-search-results"></div>
+      `;
+      let searchTimeout;
+      document.getElementById('friend-search-input').addEventListener('input', (e) => {
+        clearTimeout(searchTimeout);
+        const val = e.target.value.trim();
+        if (!val) { document.getElementById('friend-search-results').innerHTML = ''; return; }
+        searchTimeout = setTimeout(() => this.doFriendSearch(val), 400);
+      });
+    }
+  },
+
+  async doFriendSearch(searchQuery) {
+    const resultsEl = document.getElementById('friend-search-results');
+    if (!resultsEl) return;
+    resultsEl.innerHTML = '<div class="friends-loading">Searching…</div>';
+
+    try {
+      const [users, outgoing, friends] = await Promise.all([
+        window.Auth?.searchUsers?.(searchQuery) || [],
+        window.Auth?.getOutgoingRequests?.() || [],
+        window.Auth?.getFriends?.() || []
+      ]);
+
+      const sentToUids = new Set(outgoing.map(r => r.to));
+      const friendUids = new Set(friends.map(f => f.uid));
+
+      if (users.length === 0) {
+        resultsEl.innerHTML = '<div class="friends-empty">No users found.</div>';
+        return;
+      }
+
+      resultsEl.innerHTML = users.map(u => {
+        const isFriend = friendUids.has(u.uid);
+        const isPending = sentToUids.has(u.uid);
+        const badge = isFriend
+          ? '<div class="friend-pending-badge friend-badge-accepted">Friends</div>'
+          : isPending
+            ? '<div class="friend-pending-badge">Pending</div>'
+            : `<button class="friend-btn friend-btn-add" data-uid="${u.uid}" data-uname="${u.username}">Add</button>`;
+        return `
+          <div class="friend-item">
+            <div class="friend-avatar">${u.username.substring(0, 2).toUpperCase()}</div>
+            <div class="friend-username">@${u.username}</div>
+            ${badge}
+          </div>
+        `;
+      }).join('');
+
+      resultsEl.querySelectorAll('.friend-btn-add').forEach(btn => {
+        btn.addEventListener('click', async () => {
+          btn.disabled = true;
+          btn.textContent = '…';
+          await window.Auth?.sendFriendRequest?.(btn.dataset.uid, btn.dataset.uname);
+          btn.textContent = 'Pending';
+          btn.className = 'friend-pending-badge';
+        });
+      });
+    } catch (e) {
+      resultsEl.innerHTML = '<div class="friends-empty">Search failed. Try again.</div>';
+    }
   },
 
   applyTheme() {

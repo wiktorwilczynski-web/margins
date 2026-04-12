@@ -14,11 +14,11 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300;14..32,400;14..32,500;14..32,600;14..32,700;14..32,800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="css/styles.css?v=103">
+  <link rel="stylesheet" href="css/styles.css?v=104">
   <script>
     // Cache buster: force reload when new version is deployed
     (function() {
-      var v = 103;
+      var v = 104;
       var stored = localStorage.getItem('margins_app_version');
       if (stored && parseInt(stored) >= v) return;
       // New version — nuke all caches and reload
@@ -129,6 +129,10 @@
       <div class="settings-panes" id="settings-panes">
         <!-- Main settings pane -->
         <div class="settings-pane">
+          <button class="settings-nav-row" id="nav-account">
+            <span>My Account</span>
+            <svg class="settings-nav-chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg>
+          </button>
           <button class="settings-nav-row" id="nav-api-keys">
             <span>API Keys</span>
             <svg class="settings-nav-chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg>
@@ -154,6 +158,17 @@
           <div class="setting-group">
             <button id="sign-out" class="btn btn-sm">Sign Out</button>
           </div>
+        </div>
+        <!-- Account sub-pane -->
+        <div class="settings-pane" id="account-pane">
+          <div class="settings-sub-header">
+            <button class="top-bar-icon-btn" id="account-back" aria-label="Back">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+            </button>
+            <h2 style="font-size:17px">My Account</h2>
+            <div style="min-width:80px"></div>
+          </div>
+          <div id="account-pane-content"><div class="account-loading">Loading…</div></div>
         </div>
         <!-- API Keys sub-pane -->
         <div class="settings-pane">
