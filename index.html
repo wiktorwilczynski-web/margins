@@ -18,7 +18,7 @@
   <script>
     // Cache buster: force reload when new version is deployed
     (function() {
-      var v = 75;
+      var v = 76;
       var stored = localStorage.getItem('margins_app_version');
       if (stored && parseInt(stored) >= v) return;
       // New version — nuke all caches and reload
@@ -119,7 +119,9 @@
   <!-- Settings Page (full screen, slides in from right) -->
   <div id="settings-page" class="settings-page">
     <div class="settings-page-header">
-      <button id="settings-page-back" class="settings-page-back-btn">‹</button>
+      <button id="settings-page-back" class="top-bar-icon-btn" aria-label="Back">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+      </button>
       <h2>Settings</h2>
       <div style="width:40px"></div>
     </div>
@@ -129,7 +131,7 @@
         <div class="settings-pane">
           <button class="settings-nav-row" id="nav-api-keys">
             <span>API Keys</span>
-            <span class="settings-nav-chevron">›</span>
+            <svg class="settings-nav-chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg>
           </button>
           <div class="setting-group">
             <label>Theme</label>
@@ -156,7 +158,9 @@
         <!-- API Keys sub-pane -->
         <div class="settings-pane">
           <div class="settings-sub-header">
-            <button class="settings-back-btn" id="settings-back">‹ Settings</button>
+            <button class="settings-back-btn top-bar-icon-btn" id="settings-back" aria-label="Back">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+            </button>
             <h2 style="font-size:17px">API Keys</h2>
             <div style="min-width:80px"></div>
           </div>
@@ -250,7 +254,9 @@
   <!-- Add Quote Page (full screen, slides in from right) -->
   <div id="add-quote-page" class="add-quote-page">
     <div class="add-quote-header">
-      <button id="add-quote-back" class="settings-page-back-btn">‹</button>
+      <button id="add-quote-back" class="top-bar-icon-btn" aria-label="Back">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+      </button>
       <h2>Add Quote</h2>
       <div style="width:40px"></div>
     </div>
@@ -284,7 +290,9 @@
     <div class="modal-overlay"></div>
     <div class="modal-content modal-large modal-full">
       <div class="modal-header">
-        <button class="modal-back">&larr;</button>
+        <button class="modal-back top-bar-icon-btn" aria-label="Back">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+        </button>
         <h2 id="hub-book-title"></h2>
         <div style="width:32px"></div>
       </div>

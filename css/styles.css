@@ -149,17 +149,20 @@ body {
 
 .top-bar-actions { display: flex; align-items: center; gap: 8px; }
 
-#settings-btn, #add-quote-btn {
+#settings-btn, #add-quote-btn, .top-bar-icon-btn {
   background: none;
   border: none;
   color: var(--text-muted);
   cursor: pointer;
   padding: 8px;
   border-radius: var(--radius-sm);
+  display: flex;
+  align-items: center;
+  justify-content: center;
   transition: color var(--duration-fast) ease, background var(--duration-fast) ease;
 }
 
-#settings-btn:active, #add-quote-btn:active {
+#settings-btn:active, #add-quote-btn:active, .top-bar-icon-btn:active {
   background: var(--accent-soft);
   color: var(--accent);
 }
@@ -518,9 +521,7 @@ label {
   color: var(--accent);
 }
 
-.modal-back {
-  font-size: 20px;
-}
+.modal-back { /* inherits from .top-bar-icon-btn */ }
 
 .modal-body {
   padding: var(--space-5);
@@ -3277,19 +3278,7 @@ label {
 
 .settings-page-header h2 { font-size: 17px; font-weight: 600; }
 
-.settings-page-back-btn {
-  background: none;
-  border: none;
-  color: var(--accent);
-  font-size: 22px;
-  cursor: pointer;
-  width: 40px;
-  text-align: left;
-  padding: 4px 0;
-  line-height: 1;
-}
-
-.settings-page-back-btn:active { opacity: 0.6; }
+.settings-page-back-btn { /* legacy — superseded by .top-bar-icon-btn */ }
 
 .settings-page-body { flex: 1; overflow: hidden; position: relative; }
 

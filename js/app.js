@@ -2049,7 +2049,7 @@ Rules:
     // Toggle existing / new
     page.querySelectorAll('.aq-toggle-btn').forEach(btn => {
       btn.addEventListener('click', () => {
-        modal.querySelectorAll('.aq-toggle-btn').forEach(b => b.classList.remove('active'));
+        page.querySelectorAll('.aq-toggle-btn').forEach(b => b.classList.remove('active'));
         btn.classList.add('active');
         mode = btn.dataset.mode;
         page.querySelector('#aq-existing').classList.toggle('hidden', mode !== 'existing');
