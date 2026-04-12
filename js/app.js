@@ -1081,12 +1081,24 @@ Use **bold** for key terms. Be concise and sharp. No padding or pleasantries.`;
                 </div>
               `;
             }
-            const excerpt = (lesson.body.match(/[^.!?]+[.!?]+/) || [lesson.body])[0]?.trim() || '';
-            const truncated = excerpt.length > 100 ? excerpt.slice(0, 100).trim() + '...' : excerpt;
+            const isFav = this.isFavorite(lesson.id);
             return `
               <div class="hub-lesson-card" data-lesson-id="${lesson.id}">
                 <div class="hub-lesson-title">${lesson.title}</div>
-                <div class="hub-lesson-excerpt">${truncated}</div>
+                <div class="hub-lesson-body">${this.formatLessonBody(lesson.body)}</div>
+                <div class="hub-lesson-actions">
+                  <button class="home-hero-cta hub-journey-btn" data-lesson-id="${lesson.id}">
+                    Begin journey
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+                  </button>
+                  <button class="home-action-pill hub-fav-btn ${isFav ? 'is-fav' : ''}" data-lesson-id="${lesson.id}">
+                    ${isFav ? '♥ Saved' : '♡ Save'}
+                  </button>
+                  <button class="home-action-pill hub-chat-btn" data-lesson-id="${lesson.id}">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+                    Ask AI
+                  </button>
+                </div>
               </div>
             `;
           };
@@ -1179,11 +1191,25 @@ Use **bold** for key terms. Be concise and sharp. No padding or pleasantries.`;
         });
       });
 
-      // Bind hub lesson cards → journey
-      content.querySelectorAll('.hub-lesson-card[data-lesson-id]').forEach(card => {
-        card.addEventListener('click', () => {
+      // Bind hub lesson buttons
+      content.querySelectorAll('.hub-journey-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
           closeHub();
-          setTimeout(() => this.openLessonJourney(card.dataset.lessonId), 150);
+          setTimeout(() => this.openLessonJourney(btn.dataset.lessonId), 150);
+        });
+      });
+      content.querySelectorAll('.hub-fav-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          this.toggleFavorite(btn.dataset.lessonId);
+          const isFav = this.isFavorite(btn.dataset.lessonId);
+          btn.textContent = isFav ? '♥ Saved' : '♡ Save';
+          btn.classList.toggle('is-fav', isFav);
+        });
+      });
+      content.querySelectorAll('.hub-chat-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          closeHub();
+          setTimeout(() => this.openLessonJourney(btn.dataset.lessonId), 150);
         });
       });
 
@@ -2099,12 +2125,17 @@ Rules:
       clearTimeout(searchDebounce);
       const q = newSearch.value.trim();
       if (q.length < 2) { newResults.classList.add('hidden'); newResults.innerHTML = ''; return; }
+      // Show loading immediately
+      newResults.innerHTML = '<div class="aq-loading"><span class="aq-loading-dot"></span><span class="aq-loading-dot"></span><span class="aq-loading-dot"></span></div>';
+      newResults.classList.remove('hidden');
       searchDebounce = setTimeout(async () => {
         try {
-          const res = await fetch(`https://openlibrary.org/search.json?q=${encodeURIComponent(q)}&fields=title,author_name,cover_i&limit=6`);
+          const res = await fetch(`https://openlibrary.org/search.json?q=${encodeURIComponent(q)}&fields=title,author_name,cover_i,edition_count&limit=12`);
           const json = await res.json();
-          if (!json.docs?.length) { newResults.classList.add('hidden'); return; }
-          newResults.innerHTML = json.docs.map(doc => {
+          if (!json.docs?.length) { newResults.innerHTML = '<div class="aq-no-results">No results found</div>'; return; }
+          // Sort by edition count (number of editions = proxy for popularity)
+          const sorted = [...(json.docs)].sort((a, b) => (b.edition_count || 0) - (a.edition_count || 0)).slice(0, 6);
+          newResults.innerHTML = sorted.map(doc => {
             const title = doc.title || 'Unknown';
             const author = (doc.author_name || []).slice(0, 2).join(', ');
             const cover = doc.cover_i ? `https://covers.openlibrary.org/b/id/${doc.cover_i}-M.jpg` : '';
@@ -2118,7 +2149,6 @@ Rules:
               </div>
             `;
           }).join('');
-          newResults.classList.remove('hidden');
           newResults.querySelectorAll('.aq-result-item').forEach(item => {
             item.addEventListener('click', () => {
               selectedBook = { title: item.dataset.title, author: item.dataset.author, coverUrl: item.dataset.cover || null, isNew: true };
@@ -2128,9 +2158,9 @@ Rules:
             });
           });
         } catch (e) {
-          console.warn('Book search failed:', e);
+          newResults.innerHTML = '<div class="aq-no-results">Search failed</div>';
         }
-      }, 400);
+      }, 350);
     });
 
     // Submit
