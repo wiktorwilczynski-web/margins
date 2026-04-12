@@ -80,6 +80,9 @@ function startRealtimeSync() {
       cloudData.settings = cloudData.settings || localData.settings;
       // Save locally without triggering cloud sync (avoid infinite loop)
       localStorage.setItem('margins_data', JSON.stringify(cloudData));
+      // Re-apply curated details + examples in case cloud data has stale nulls
+      if (window.App && window.App.applyDetails) window.App.applyDetails();
+      if (window.App && window.App.applyExamples) window.App.applyExamples();
       // Re-render current tab
       if (window.App && window.App.currentTab) {
         window.App.renderTab(window.App.currentTab);

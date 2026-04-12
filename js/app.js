@@ -37,12 +37,8 @@ const App = {
     }
 
     // Backfill lesson details — runs until all lessons have detail
-    const needsDetails = Storage.getData().books.some(b => b.lessons.some(l => !l.detail));
-    if (needsDetails) {
-      this.generateMissingDetails();
-    }
-
-    // Apply pre-written examples to lessons that don't have them
+    // Apply pre-written detail and examples (always override to fix Firebase stale data)
+    this.applyDetails();
     this.applyExamples();
   },
 
@@ -83,6 +79,7 @@ const App = {
     const lpModal = document.getElementById('lesson-preview-modal');
     if (lpModal && !lpModal.classList.contains('hidden')) {
       lpModal.classList.add('hidden');
+      document.body.style.overflow = '';
       return;
     }
     // Journey modal
@@ -223,7 +220,7 @@ const App = {
 
     // ===== MORE TODAY =====
     if (rest.length > 0) {
-      html += `<div class="home-section-label">More today</div>`;
+      html += `<div class="home-section-label">More today <span class="home-section-count">${rest.length}</span></div>`;
       html += `<div class="home-cards-scroll">`;
       for (const lesson of rest) {
         const book = data.books.find(b => b.lessons.some(l => l.id === lesson.id));
@@ -243,7 +240,10 @@ const App = {
 
     // ===== SAVED =====
     const favIds = data.favorites || [];
-    if (favIds.length > 0) {
+    html += `<div class="home-section-label">Saved</div>`;
+    if (favIds.length === 0) {
+      html += `<div class="home-saved-empty">Tap ♡ on any lesson to save it here</div>`;
+    } else {
       const favLessons = [];
       for (const fid of favIds) {
         for (const book of data.books) {
@@ -252,7 +252,6 @@ const App = {
         }
       }
       if (favLessons.length > 0) {
-        html += `<div class="home-section-label">Saved</div>`;
         html += `<div class="home-saved-list">`;
         for (const { lesson, book } of favLessons.slice(0, 4)) {
           const excerpt = (lesson.body.match(/[^.!?]+[.!?]+/) || [lesson.body])[0]?.trim() || '';
@@ -319,25 +318,31 @@ const App = {
 
   openLessonPreview(lessonId) {
     const data = Storage.getData();
-    let lesson;
+    let lesson, book;
     for (const b of data.books) {
       const l = b.lessons.find(x => x.id === lessonId);
-      if (l) { lesson = l; break; }
+      if (l) { lesson = l; book = b; break; }
     }
     if (!lesson) return;
 
     const modal = document.getElementById('lesson-preview-modal');
     document.getElementById('lp-title').textContent = lesson.title;
-    document.getElementById('lp-body').innerHTML = this.formatLessonBody(lesson.body);
+    const hookSentence = (lesson.body.match(/[^.!?]+[.!?]+/) || [lesson.body])[0]?.trim() || '';
+    document.getElementById('lp-body').textContent = hookSentence;
 
     const isFav = this.isFavorite(lessonId);
     const favBtn = document.getElementById('lp-fav');
     favBtn.textContent = isFav ? '♥ Saved' : '♡ Save';
     favBtn.classList.toggle('is-fav', isFav);
 
+    const closePreview = () => {
+      modal.classList.add('hidden');
+      document.body.style.overflow = '';
+    };
+
     // Buttons
     document.getElementById('lp-journey').onclick = () => {
-      modal.classList.add('hidden');
+      closePreview();
       this.openLessonJourney(lessonId);
     };
     favBtn.onclick = () => {
@@ -347,13 +352,14 @@ const App = {
       favBtn.classList.toggle('is-fav', nowFav);
     };
     document.getElementById('lp-chat').onclick = () => {
-      modal.classList.add('hidden');
-      this.openLessonJourney(lessonId);
+      closePreview();
+      this.openAIChat(lesson, book, null);
     };
 
     modal.classList.remove('hidden');
+    document.body.style.overflow = 'hidden';
     // Tap backdrop to close
-    modal.onclick = (e) => { if (e.target === modal) modal.classList.add('hidden'); };
+    modal.onclick = (e) => { if (e.target === modal) closePreview(); };
   },
 
   handleLearnMore(lessonId, bookId) {
@@ -422,13 +428,23 @@ const App = {
       `
     });
 
-    // Scene 2: THE IDEA — full body, left-aligned
+    // Scene 2: THE IDEA — key point card + body
+    const allSentences = lesson.body.match(/[^.!?]+[.!?]+/g) || [lesson.body];
+    const keyPointText = allSentences[0]?.trim() || '';
+    const restHtml = allSentences.slice(1).map(s => `<div class="lesson-sentence">${s.trim()}</div>`).join('');
+
     scenes.push({
       type: 'concept',
       html: `
         <div class="j-idea">
           <div class="j-idea-label">The idea</div>
-          <div class="j-idea-body">${this.formatLessonBody(lesson.body)}</div>
+          ${keyPointText ? `
+            <div class="j-idea-keypoint">
+              <div class="j-idea-keypoint-label">Key point</div>
+              ${keyPointText}
+            </div>
+          ` : ''}
+          ${restHtml ? `<div class="j-idea-body">${restHtml}</div>` : ''}
         </div>
       `
     });
@@ -500,8 +516,6 @@ const App = {
       viewport.innerHTML = `
         <div class="journey-stage" data-scene="${scene.type}">
           ${scene.html}
-          ${!isFirst ? `<div class="journey-tap-left"></div>` : ''}
-          ${!isLast ? `<div class="journey-tap-right"></div>` : ''}
         </div>
       `;
 
@@ -512,11 +526,8 @@ const App = {
         if (i === idx) seg.classList.add('active');
       });
 
-      // Tap zones
-      viewport.querySelector('.journey-tap-left')?.addEventListener('click', () => goTo(idx - 1));
-      viewport.querySelector('.journey-tap-right')?.addEventListener('click', () => {
-        if (idx < total - 1) goTo(idx + 1);
-      });
+      // Mark complete when reaching the source (last) scene
+      if (isLast) this.markLessonComplete(lesson.id);
 
       // Source scene buttons
       if (scene.type === 'source') {
@@ -542,13 +553,37 @@ const App = {
       renderScene(current);
     };
 
+    // Click navigation: edges go forward/back, center opens paragraph AI
+    viewport.onclick = (e) => {
+      if (e.target.closest('button, a, input, textarea, select, label')) return;
+      const rect = viewport.getBoundingClientRect();
+      const x = e.clientX - rect.left;
+      const edge = rect.width * 0.25;
+      if (x < edge) {
+        if (current > 0) goTo(current - 1);
+      } else if (x > rect.width - edge) {
+        if (current < total - 1) goTo(current + 1);
+      } else {
+        // Center tap → paragraph AI if text was tapped
+        const textEl = e.target.closest('.lesson-sentence, .j-idea-keypoint, .j-deeper-content p, .j-deeper-content li, .j-examples-content li, .j-examples-content p');
+        const text = textEl?.textContent?.trim();
+        if (text && text.length > 15) {
+          this.openParagraphAI(text, lesson, book);
+        }
+      }
+    };
+
     // Swipe gesture support
     let touchStartX = 0;
     let touchStartY = 0;
+    let touchMoved = false;
     viewport.addEventListener('touchstart', (e) => {
       touchStartX = e.touches[0].clientX;
       touchStartY = e.touches[0].clientY;
+      touchMoved = false;
     }, { passive: true });
+
+    viewport.addEventListener('touchmove', () => { touchMoved = true; }, { passive: true });
 
     viewport.addEventListener('touchend', (e) => {
       const dx = e.changedTouches[0].clientX - touchStartX;
@@ -732,19 +767,148 @@ Use **bold** for key terms. Be concise and sharp. No padding or pleasantries.`;
     this.showToast('Lesson details generated');
   },
 
+  applyDetails() {
+    if (!window.LESSON_DETAILS) return;
+    const data = Storage.getData();
+    let updated = false;
+    for (const book of data.books) {
+      for (const lesson of book.lessons) {
+        if (window.LESSON_DETAILS[lesson.title]) {
+          lesson.detail = window.LESSON_DETAILS[lesson.title];
+          updated = true;
+        }
+      }
+    }
+    if (updated) Storage.save(data);
+  },
+
   applyExamples() {
     if (!window.LESSON_EXAMPLES) return;
     const data = Storage.getData();
     let updated = false;
     for (const book of data.books) {
       for (const lesson of book.lessons) {
-        if (!lesson.examples && window.LESSON_EXAMPLES[lesson.title]) {
+        // Always apply curated examples (overrides stale/missing data from Firebase)
+        if (window.LESSON_EXAMPLES[lesson.title]) {
           lesson.examples = window.LESSON_EXAMPLES[lesson.title];
           updated = true;
         }
       }
     }
     if (updated) Storage.save(data);
+  },
+
+  markLessonComplete(lessonId) {
+    Storage.updateData(data => {
+      for (const b of data.books) {
+        const l = b.lessons.find(x => x.id === lessonId);
+        if (l) { l.completedAt = new Date().toISOString(); break; }
+      }
+    });
+  },
+
+  openParagraphAI(text, lesson, book) {
+    this.openAIChat(lesson, book, text);
+  },
+
+  openAIChat(lesson, book, contextText) {
+    const existing = document.getElementById('ai-chat-overlay');
+    if (existing) existing.remove();
+
+    const subtitleText = contextText
+      ? `"${contextText.slice(0, 60)}${contextText.length > 60 ? '…' : ''}"`
+      : lesson ? lesson.title : 'General';
+
+    const overlay = document.createElement('div');
+    overlay.id = 'ai-chat-overlay';
+    overlay.className = 'ai-chat-overlay';
+    overlay.innerHTML = `
+      <div class="ai-chat-header">
+        <div class="ai-chat-header-info">
+          <div class="ai-chat-title">Ask AI</div>
+          <div class="ai-chat-subtitle">${book?.title || ''}</div>
+        </div>
+        <button class="ai-chat-close">×</button>
+      </div>
+      <div class="ai-chat-messages">
+        <div class="ai-chat-context-pill">${subtitleText}</div>
+      </div>
+      <div class="ai-chat-input-row">
+        <input class="ai-chat-input" type="text" placeholder="Ask anything…" autocomplete="off">
+        <button class="ai-chat-send">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+        </button>
+      </div>
+    `;
+    document.body.appendChild(overlay);
+    document.body.style.overflow = 'hidden';
+
+    const messagesEl = overlay.querySelector('.ai-chat-messages');
+    const input = overlay.querySelector('.ai-chat-input');
+    const sendBtn = overlay.querySelector('.ai-chat-send');
+
+    overlay.querySelector('.ai-chat-close').onclick = () => {
+      overlay.remove();
+      document.body.style.overflow = '';
+    };
+
+    const history = [];
+
+    const addMessage = (role, html) => {
+      const msg = document.createElement('div');
+      msg.className = `ai-msg ${role}`;
+      const bubble = document.createElement('div');
+      bubble.className = 'ai-msg-bubble';
+      bubble.innerHTML = html;
+      msg.appendChild(bubble);
+      messagesEl.appendChild(msg);
+      messagesEl.scrollTop = messagesEl.scrollHeight;
+      return msg;
+    };
+
+    const addTyping = () => {
+      const msg = document.createElement('div');
+      msg.className = 'ai-msg assistant';
+      msg.innerHTML = `<div class="ai-msg-bubble ai-msg-typing"><span></span><span></span><span></span></div>`;
+      messagesEl.appendChild(msg);
+      messagesEl.scrollTop = messagesEl.scrollHeight;
+      return msg;
+    };
+
+    const send = async () => {
+      const q = input.value.trim();
+      if (!q) return;
+      input.value = '';
+      sendBtn.disabled = true;
+
+      addMessage('user', q);
+      history.push({ role: 'user', content: q });
+
+      const typing = addTyping();
+
+      const data = Storage.getData();
+      const systemPrompt = contextText
+        ? `You are a knowledgeable reading companion. The user is studying "${lesson?.title}" from "${book?.title}" by ${book?.author}. They're reading this passage: "${contextText}". Answer their questions using your full knowledge — go beyond the text when useful. Be concise and direct. Use markdown for structure when helpful.`
+        : lesson
+        ? `You are a knowledgeable reading companion. The user is exploring "${lesson.title}" from "${book?.title}" by ${book?.author}. Use your full knowledge to answer follow-up questions, expand on ideas, and make connections beyond the book. Be concise and direct. Use markdown for structure when helpful.`
+        : `You are a knowledgeable reading companion. Answer questions about books, ideas, and concepts. Be concise and direct. Use markdown for structure when helpful.`;
+
+      try {
+        const response = await LLM.chat(history, data.settings, systemPrompt);
+        history.push({ role: 'assistant', content: response });
+        typing.remove();
+        addMessage('assistant', this.parseMarkdown(response));
+      } catch (err) {
+        typing.remove();
+        addMessage('assistant', 'No API key configured — add one in Settings.');
+      }
+      sendBtn.disabled = false;
+      input.focus();
+    };
+
+    sendBtn.onclick = send;
+    input.addEventListener('keydown', (e) => { if (e.key === 'Enter') send(); });
+    setTimeout(() => input.focus(), 100);
   },
 
   seededShuffle(arr, seed) {
@@ -828,8 +992,11 @@ Use **bold** for key terms. Be concise and sharp. No padding or pleasantries.`;
 
       // Separate currently-reading from completed
       const reading = data.books.filter(b => !b.completed && b.title !== 'Loose Quotes');
-      const completed = data.books.filter(b => b.completed);
       const q = searchQuery.toLowerCase().trim();
+
+      // Stats
+      const totalBooks = data.books.filter(b => b.title !== 'Loose Quotes').length;
+      const completedCount = data.books.filter(b => b.completed).length;
 
       let html = '';
 
@@ -843,11 +1010,25 @@ Use **bold** for key terms. Be concise and sharp. No padding or pleasantries.`;
         </div>
       `;
 
+      // Stats strip
+      html += `
+        <div class="lib-stats-strip">
+          <div class="lib-stat-card">
+            <div class="lib-stat-number">${totalBooks}</div>
+            <div class="lib-stat-label">Books</div>
+          </div>
+          <div class="lib-stat-card">
+            <div class="lib-stat-number">${reading.length}</div>
+            <div class="lib-stat-label">Reading</div>
+          </div>
+        </div>
+      `;
+
       // Search
       html += `
         <div class="lib-search">
           <svg class="lib-search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
-          <input type="search" id="lib-search-input" placeholder="Search..." value="${searchQuery}">
+          <input type="search" id="lib-search-input" placeholder="Search books and lessons..." value="${searchQuery}">
         </div>
       `;
 
@@ -882,12 +1063,22 @@ Use **bold** for key terms. Be concise and sharp. No padding or pleasantries.`;
       } else {
         // Currently reading shelf
         if (reading.length > 0) {
-          html += `<div class="lib-section-label">Currently reading</div>`;
+          html += `<div class="home-section-label">Currently reading <span class="home-section-count">${reading.length}</span></div>`;
           html += `<div class="lib-reading-scroll">`;
           for (const book of reading) {
-            const progress = book.totalPages && book.currentPage
-              ? Math.min(100, Math.round((book.currentPage / book.totalPages) * 100))
-              : null;
+            const bookChs = window.BOOK_CHAPTERS?.[book.title];
+            let progressPct = null;
+            let progressInfo = null;
+
+            if (bookChs) {
+              const lastChNum = book.lastChapterNum ?? -1;
+              const totalCh = bookChs.chapters.length;
+              const doneCh = bookChs.chapters.filter(c => c.num <= lastChNum).length;
+              progressPct = totalCh > 0 ? Math.round((doneCh / totalCh) * 100) : 0;
+              const lastCh = lastChNum >= 0 ? bookChs.chapters.find(c => c.num === lastChNum) : null;
+              progressInfo = lastCh ? `Last: ${lastCh.label}` : null;
+            }
+
             html += `
               <div class="lib-reading-card" data-book-id="${book.id}">
                 <div class="lib-reading-cover-wrap">
@@ -895,15 +1086,16 @@ Use **bold** for key terms. Be concise and sharp. No padding or pleasantries.`;
                     ? `<img class="lib-reading-cover" src="${book.coverUrl}" alt="">`
                     : `<div class="lib-reading-cover-ph">${book.title}</div>`
                   }
-                  ${progress !== null ? `
+                  ${progressPct !== null ? `
                     <div class="lib-reading-progress">
-                      <div class="lib-reading-progress-fill" style="width:${progress}%"></div>
+                      <div class="lib-reading-progress-fill" style="width:${progressPct}%"></div>
                     </div>
                   ` : ''}
                 </div>
                 <div class="lib-reading-title">${book.title}</div>
                 <div class="lib-reading-author">${book.author}</div>
-                ${progress !== null ? `<div class="lib-reading-pct">${progress}%</div>` : ''}
+                ${progressInfo ? `<div class="lib-reading-pct">${progressInfo}</div>` : ''}
+                ${bookChs ? `<button class="lib-reading-update-btn" data-book-id="${book.id}">Log latest chapter</button>` : ''}
               </div>
             `;
           }
@@ -912,7 +1104,7 @@ Use **bold** for key terms. Be concise and sharp. No padding or pleasantries.`;
 
         // Topics pills (horizontal scroll)
         if (tags.length > 0) {
-          html += `<div class="lib-section-label">Topics</div>`;
+          html += `<div class="home-section-label">Topics</div>`;
           html += `<div class="lib-topics-scroll">`;
           for (const tag of tags) {
             html += `<button class="lib-topic-pill ${tag === selectedTag ? 'active' : ''}" data-tag="${tag}">${this.capitalizeTag(tag)}</button>`;
@@ -942,14 +1134,14 @@ Use **bold** for key terms. Be concise and sharp. No padding or pleasantries.`;
         const completedAndOther = allBooksFiltered.filter(b => !readingIds.has(b.id));
 
         if (completedAndOther.length > 0) {
-          html += `<div class="lib-section-label">${reading.length > 0 ? 'Completed' : 'All books'}</div>`;
+          html += `<div class="home-section-label">${reading.length > 0 ? 'Completed' : 'All books'} <span class="home-section-count">${completedAndOther.length}</span></div>`;
           html += `<div class="lib-shelf">`;
           for (const book of completedAndOther) {
             html += this.renderLibBookCard(book);
           }
           html += `</div>`;
         } else if (reading.length === 0) {
-          html += `<div class="lib-section-label">All books</div>`;
+          html += `<div class="home-section-label">All books</div>`;
           html += `<div class="lib-empty-search">Your shelf is empty. Tap + to add your first book.</div>`;
         }
       }
@@ -969,8 +1161,22 @@ Use **bold** for key terms. Be concise and sharp. No padding or pleasantries.`;
 
       document.getElementById('add-book-inline')?.addEventListener('click', () => this.openAddBookModal());
 
-      main.querySelectorAll('.lib-reading-card, .lib-book-card').forEach(card => {
+      main.querySelectorAll('.lib-reading-card').forEach(card => {
+        card.addEventListener('click', (e) => {
+          if (e.target.closest('.lib-reading-update-btn')) return;
+          this.openBookHub(card.dataset.bookId);
+        });
+      });
+
+      main.querySelectorAll('.lib-book-card').forEach(card => {
         card.addEventListener('click', () => this.openBookHub(card.dataset.bookId));
+      });
+
+      main.querySelectorAll('.lib-reading-update-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          this.selectFinishedChapter(btn.dataset.bookId);
+        });
       });
 
       main.querySelectorAll('.lib-topic-pill').forEach(pill => {
@@ -986,6 +1192,106 @@ Use **bold** for key terms. Be concise and sharp. No padding or pleasantries.`;
     };
 
     render();
+  },
+
+  // ===== CHAPTER TRACKER =====
+  selectFinishedChapter(bookId, onDone) {
+    const data = Storage.getData();
+    const book = data.books.find(b => b.id === bookId);
+    if (!book) return;
+
+    const bookChs = window.BOOK_CHAPTERS?.[book.title];
+    if (!bookChs) return;
+
+    const lastChNum = book.lastChapterNum ?? -1;
+
+    const chaptersHtml = bookChs.chapters.map(ch => {
+      const isDone = ch.num <= lastChNum;
+      return `
+        <div class="chapter-select-item ${isDone ? 'done' : ''}" data-ch-num="${ch.num}">
+          <div class="chapter-select-info">
+            ${ch.part ? `<div class="chapter-select-part">${ch.part}</div>` : ''}
+            <div class="chapter-select-label">${ch.label}</div>
+            <div class="chapter-select-title">${ch.title}</div>
+          </div>
+          ${isDone ? `<div class="chapter-select-check">✓</div>` : ''}
+        </div>
+      `;
+    }).join('');
+
+    const sheet = document.createElement('div');
+    sheet.className = 'page-sheet-overlay';
+    sheet.innerHTML = `
+      <div class="page-sheet chapter-select-sheet">
+        <div class="page-sheet-book">${book.title}</div>
+        <div class="page-sheet-title">Which chapter did you just finish?</div>
+        <div class="chapter-select-list">
+          ${chaptersHtml}
+        </div>
+        <button class="page-sheet-cancel" id="chapter-select-cancel">Cancel</button>
+      </div>
+    `;
+    document.body.appendChild(sheet);
+
+    const close = () => sheet.remove();
+    document.getElementById('chapter-select-cancel').addEventListener('click', close);
+    sheet.addEventListener('click', (e) => { if (e.target === sheet) close(); });
+
+    sheet.querySelectorAll('.chapter-select-item').forEach(item => {
+      item.addEventListener('click', () => {
+        const chNum = parseInt(item.dataset.chNum);
+        const ch = bookChs.chapters.find(c => c.num === chNum);
+        close();
+        Storage.updateData(d => {
+          const b = d.books.find(b2 => b2.id === bookId);
+          if (b) b.lastChapterNum = chNum;
+        });
+        if (ch) this.showChapterRefresherPopup([ch], book.title);
+        if (onDone) onDone();
+        if (this.currentTab === 'library') this.renderLibrary();
+      });
+    });
+  },
+
+  showChapterRefresherPopup(chapters, bookTitle, preview = false) {
+    const overlay = document.createElement('div');
+    overlay.className = 'chapter-popup-overlay';
+
+    const chaptersHtml = chapters.map((ch, i) => `
+      ${i > 0 ? '<hr class="chapter-popup-divider">' : ''}
+      <div class="chapter-popup-chapter">
+        <div class="chapter-popup-part">${ch.part || ''}</div>
+        <div class="chapter-popup-chapter-label">${ch.label}</div>
+        <div class="chapter-popup-chapter-title">${ch.title}</div>
+        <div class="chapter-popup-refresher">${ch.refresher}</div>
+      </div>
+    `).join('');
+
+    const badgeHtml = preview ? '' : `
+      <div class="chapter-popup-badge">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20 6L9 17l-5-5"/></svg>
+        Chapter complete
+      </div>`;
+
+    const headlineHtml = preview ? '' : `
+      <div class="chapter-popup-headline">${
+        chapters.length === 1
+          ? `You just finished ${chapters[0].label}`
+          : `You just finished ${chapters.length} chapters`
+      }</div>`;
+
+    overlay.innerHTML = `
+      <div class="chapter-popup">
+        ${badgeHtml}
+        ${headlineHtml}
+        <div class="chapter-popup-body">${chaptersHtml}</div>
+        <button class="chapter-popup-dismiss" id="chapter-popup-dismiss">${preview ? 'Close' : 'Got it'}</button>
+      </div>
+    `;
+
+    document.body.appendChild(overlay);
+    overlay.addEventListener('click', (e) => { if (e.target === overlay) overlay.remove(); });
+    document.getElementById('chapter-popup-dismiss').addEventListener('click', () => overlay.remove());
   },
 
   renderLibBookCard(book) {
@@ -1050,12 +1356,38 @@ Use **bold** for key terms. Be concise and sharp. No padding or pleasantries.`;
           ${Covers.renderCover(freshBook, 'hub')}
           <h2>${freshBook.title}</h2>
           <div class="hub-author">${freshBook.author}</div>
+          ${freshBook.lessons.length > 0 ? (() => {
+            const done = freshBook.lessons.filter(l => l.completedAt).length;
+            const tot = freshBook.lessons.length;
+            const pct = Math.round((done / tot) * 100);
+            return `
+              <div class="hub-progress-bar-wrap">
+                <div class="hub-progress-bar" style="width:${pct}%"></div>
+              </div>
+              <div class="hub-progress-label">${done} of ${tot} explored</div>
+            `;
+          })() : ''}
         </div>
 
-        <div class="hub-page-input">
-          <label>Currently on page</label>
-          <input type="number" id="hub-current-page" value="${freshBook.currentPage || ''}" placeholder="0">
-        </div>
+        ${(() => {
+          const hubChs = window.BOOK_CHAPTERS?.[freshBook.title];
+          if (hubChs) {
+            const hubLastChNum = freshBook.lastChapterNum ?? -1;
+            const hubLastCh = hubLastChNum >= 0 ? hubChs.chapters.find(c => c.num === hubLastChNum) : null;
+            return `
+              <div class="hub-chapter-status">
+                <span class="hub-chapter-last">${hubLastCh ? `Last finished<strong>${hubLastCh.label}: ${hubLastCh.title}</strong>` : 'No chapters logged yet'}</span>
+                <button class="hub-log-chapter-btn" id="hub-log-chapter">Log latest chapter</button>
+              </div>
+            `;
+          }
+          return `
+            <div class="hub-page-input">
+              <label>Currently on page</label>
+              <input type="number" id="hub-current-page" value="${freshBook.currentPage || ''}" placeholder="0">
+            </div>
+          `;
+        })()}
 
         <div class="hub-complete-toggle">
           <label>Mark book as completed</label>
@@ -1067,10 +1399,12 @@ Use **bold** for key terms. Be concise and sharp. No padding or pleasantries.`;
       `;
 
       // Section toggle (only show if there are lessons)
-      if (freshBook.lessons.length > 0 || freshBook.quotes.length > 0) {
+      const hubBookChs = window.BOOK_CHAPTERS?.[freshBook.title];
+      if (freshBook.lessons.length > 0 || freshBook.quotes.length > 0 || hubBookChs) {
         html += `
           <div class="hub-section-toggle">
             <button class="hub-section-btn ${activeSection === 'lessons' ? 'active' : ''}" data-section="lessons">Lessons (${freshBook.lessons.length})</button>
+            ${hubBookChs ? `<button class="hub-section-btn ${activeSection === 'chapters' ? 'active' : ''}" data-section="chapters">Chapters (${hubBookChs.chapters.length})</button>` : ''}
             <button class="hub-section-btn ${activeSection === 'quotes' ? 'active' : ''}" data-section="quotes">Quotes (${freshBook.quotes.length})</button>
           </div>
         `;
@@ -1109,10 +1443,12 @@ Use **bold** for key terms. Be concise and sharp. No padding or pleasantries.`;
               `;
             }
             const excerpt = (lesson.body.match(/[^.!?]+[.!?]+/) || [lesson.body])[0]?.trim() || '';
+            const isDone = !!lesson.completedAt;
             return `
-              <div class="hub-lesson-card" data-lesson-id="${lesson.id}">
+              <div class="hub-lesson-card ${isDone ? 'done' : ''}" data-lesson-id="${lesson.id}">
                 <div class="hub-lesson-title">${lesson.title}</div>
                 <div class="hub-lesson-excerpt">${excerpt}</div>
+                ${isDone ? `<div class="hub-lesson-done-tick">✓</div>` : ''}
               </div>
             `;
           };
@@ -1138,6 +1474,23 @@ Use **bold** for key terms. Be concise and sharp. No padding or pleasantries.`;
               html += renderLesson(lesson);
             }
           }
+        }
+      } else if (activeSection === 'chapters' && hubBookChs) {
+        const lastChNum = freshBook.lastChapterNum ?? -1;
+        for (const ch of hubBookChs.chapters) {
+          const isDone = ch.num <= lastChNum;
+          html += `
+            <div class="hub-chapter-item ${isDone ? 'done' : ''}" data-ch-num="${ch.num}">
+              <div class="hub-chapter-item-top">
+                <div class="hub-chapter-item-meta">
+                  ${ch.part ? `<span class="hub-chapter-item-part">${ch.part} ·</span>` : ''}
+                  <span class="hub-chapter-item-label">${ch.label}</span>
+                </div>
+                ${isDone ? `<div class="hub-chapter-item-done">✓</div>` : ''}
+              </div>
+              <div class="hub-chapter-item-title">${ch.title}</div>
+            </div>
+          `;
         }
       } else {
         if (freshBook.quotes.length === 0) {
@@ -1231,12 +1584,26 @@ Use **bold** for key terms. Be concise and sharp. No padding or pleasantries.`;
         });
       });
 
+      content.querySelectorAll('.hub-chapter-item').forEach(item => {
+        item.addEventListener('click', () => {
+          const chNum = parseInt(item.dataset.chNum);
+          const bookChs = window.BOOK_CHAPTERS?.[freshBook.title];
+          const ch = bookChs?.chapters.find(c => c.num === chNum);
+          if (ch) this.showChapterRefresherPopup([ch], freshBook.title, true);
+        });
+      });
+
+      document.getElementById('hub-log-chapter')?.addEventListener('click', () => {
+        this.selectFinishedChapter(bookId, () => render());
+      });
+
       const pageInput = document.getElementById('hub-current-page');
       if (pageInput) {
         pageInput.addEventListener('change', () => {
+          const newPage = parseInt(pageInput.value) || 0;
           Storage.updateData(d => {
             const b = d.books.find(b2 => b2.id === bookId);
-            if (b) b.currentPage = parseInt(pageInput.value) || 0;
+            if (b) b.currentPage = newPage;
           });
           render();
         });
@@ -1397,48 +1764,8 @@ Use **bold** for key terms. Be concise and sharp. No padding or pleasantries.`;
   // ===== CHAT POPUP =====
   bindChatFab() {
     const fab = document.getElementById('chat-fab');
-    const modal = document.getElementById('chat-modal');
-    if (!fab || !modal) return;
-
-    const openChat = () => {
-      this.renderChatPopup();
-      modal.classList.remove('hidden');
-      document.body.style.overflow = 'hidden';
-      this.pushNav();
-      setTimeout(() => {
-        const input = document.getElementById('chat-input');
-        if (input) input.focus();
-      }, 100);
-    };
-
-    const closeChat = () => {
-      modal.classList.add('hidden');
-      document.body.style.overflow = '';
-      const sheet = modal.querySelector('.modal-content');
-      if (sheet) sheet.style.transform = '';
-      if (history.state && history.state.layer) history.back();
-    };
-
-    fab.addEventListener('click', openChat);
-    modal.querySelector('.modal-close').addEventListener('click', closeChat);
-    modal.querySelector('.modal-overlay').addEventListener('click', closeChat);
-
-    // Keyboard avoidance — push the sheet above the keyboard
-    if (window.visualViewport) {
-      const adjustForKeyboard = () => {
-        if (modal.classList.contains('hidden')) return;
-        const sheet = modal.querySelector('.modal-content');
-        if (!sheet) return;
-        const kb = Math.max(0, window.innerHeight - window.visualViewport.height - window.visualViewport.offsetTop);
-        sheet.style.transform = kb > 50 ? `translateY(-${kb}px)` : '';
-        if (kb > 50) {
-          const msgs = document.getElementById('chat-messages');
-          if (msgs) msgs.scrollTop = msgs.scrollHeight;
-        }
-      };
-      window.visualViewport.addEventListener('resize', adjustForKeyboard);
-      window.visualViewport.addEventListener('scroll', adjustForKeyboard);
-    }
+    if (!fab) return;
+    fab.addEventListener('click', () => this.openAIChat(null, null, null));
   },
 
   renderChatPopup() {
@@ -1697,11 +2024,17 @@ Use **bold** for key terms. Be concise and sharp. No padding or pleasantries.`;
   },
 
   openChatWithContext(type, id) {
-    this.chatContext = { type, id };
-    this.renderChatPopup();
-    document.getElementById('chat-modal').classList.remove('hidden');
-    document.body.style.overflow = 'hidden';
-    this.pushNav();
+    const data = Storage.getData();
+    let lesson = null, book = null;
+    if (type === 'lesson') {
+      for (const b of data.books) {
+        const l = b.lessons.find(x => x.id === id);
+        if (l) { lesson = l; book = b; break; }
+      }
+    } else if (type === 'book') {
+      book = data.books.find(b => b.id === id) || null;
+    }
+    this.openAIChat(lesson, book, null);
   },
 
   // ===== SETTINGS =====
