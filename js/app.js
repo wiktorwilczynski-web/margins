@@ -2092,7 +2092,7 @@ Rules:
       });
     });
 
-    // New book — Google Books API
+    // New book — Open Library API
     const newSearch = document.getElementById('aq-new-search');
     const newResults = document.getElementById('aq-new-results');
     newSearch.addEventListener('input', () => {
@@ -2101,14 +2101,13 @@ Rules:
       if (q.length < 2) { newResults.classList.add('hidden'); newResults.innerHTML = ''; return; }
       searchDebounce = setTimeout(async () => {
         try {
-          const res = await fetch(`https://www.googleapis.com/books/v1/volumes?q=${encodeURIComponent(q)}&maxResults=6&langRestrict=en`);
+          const res = await fetch(`https://openlibrary.org/search.json?q=${encodeURIComponent(q)}&fields=title,author_name,cover_i&limit=6`);
           const json = await res.json();
-          if (!json.items?.length) { newResults.classList.add('hidden'); return; }
-          newResults.innerHTML = json.items.map(item => {
-            const v = item.volumeInfo || {};
-            const title = v.title || 'Unknown';
-            const author = (v.authors || []).join(', ');
-            const cover = (v.imageLinks?.thumbnail || '').replace('http://', 'https://');
+          if (!json.docs?.length) { newResults.classList.add('hidden'); return; }
+          newResults.innerHTML = json.docs.map(doc => {
+            const title = doc.title || 'Unknown';
+            const author = (doc.author_name || []).slice(0, 2).join(', ');
+            const cover = doc.cover_i ? `https://covers.openlibrary.org/b/id/${doc.cover_i}-M.jpg` : '';
             return `
               <div class="aq-result-item" data-title="${title.replace(/"/g, '&quot;')}" data-author="${author.replace(/"/g, '&quot;')}" data-cover="${cover}">
                 ${cover ? `<img class="aq-result-cover" src="${cover}" alt="">` : '<div class="aq-result-cover-ph"></div>'}
