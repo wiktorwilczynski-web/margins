@@ -88,7 +88,7 @@ function startRealtimeSync() {
       // We do this here rather than calling applyDetails()/applyExamples() because those
       // go through Storage.save() → syncToCloud() → another snapshot → infinite loop.
       try {
-        for (const book of cloudData.books || []) {
+        for (const book of (cloudData.sources || cloudData.books || [])) {
           for (const lesson of book.lessons || []) {
             if (window.LESSON_DETAILS?.[lesson.title]) lesson.detail = window.LESSON_DETAILS[lesson.title];
             if (window.LESSON_EXAMPLES?.[lesson.title]) lesson.examples = window.LESSON_EXAMPLES[lesson.title];
@@ -227,7 +227,7 @@ onAuthStateChanged(auth, async (user) => {
     } else {
       // First login — load initial data if empty, then sync up
       const local = Storage.getData();
-      if (local.books.length === 0) {
+      if ((local.sources || local.books || []).length === 0) {
         await DataLoader.loadInitialData();
       }
       await syncToCloud();

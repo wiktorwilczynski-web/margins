@@ -45,7 +45,9 @@ const Covers = {
     const data = Storage.getData();
     let updated = false;
 
-    for (const book of data.books) {
+    for (const book of data.sources) {
+      // Skip podcasts that already have artwork from iTunes
+      if (book.type === 'podcast' && book.coverUrl) continue;
       if (!book.coverUrl && book.title !== 'Loose Quotes') {
         const url = await this.fetchCover(book.title, book.author);
         if (url) {
@@ -69,8 +71,10 @@ const Covers = {
     this.cache = {}; // clear in-memory cache
     let updated = false;
 
-    for (const book of data.books) {
+    for (const book of data.sources) {
       if (book.title === 'Loose Quotes') continue;
+      // Skip podcasts that have artwork from iTunes
+      if (book.type === 'podcast' && book.coverUrl) continue;
       book.coverUrl = null; // clear stored cover
       const url = await this.fetchCover(book.title, book.author);
       if (url) {

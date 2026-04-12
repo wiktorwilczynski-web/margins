@@ -5,7 +5,7 @@ const STORAGE_KEY = 'margins_data';
 const Storage = {
   getDefaultData() {
     return {
-      books: [],
+      sources: [],
       streak: { current: 0, longest: 0, lastCheckIn: null },
       connections: [],
       weeklyReflections: [],
@@ -38,7 +38,14 @@ const Storage = {
   },
 
   getData() {
-    return this.load() || this.getDefaultData();
+    const data = this.load() || this.getDefaultData();
+    // Migration: if data.books exists but data.sources doesn't, migrate
+    if (data.books && !data.sources) {
+      data.sources = data.books.map(b => ({ type: 'book', ...b }));
+      delete data.books;
+      try { localStorage.setItem('margins_data', JSON.stringify(data)); } catch(e) {}
+    }
+    return data;
   },
 
   updateData(fn) {
@@ -77,7 +84,12 @@ const Storage = {
       reader.onload = (e) => {
         try {
           const data = JSON.parse(e.target.result);
-          if (data.books && data.streak && data.settings) {
+          if ((data.sources || data.books) && data.streak && data.settings) {
+            // Migrate old format if needed
+            if (data.books && !data.sources) {
+              data.sources = data.books.map(b => ({ type: 'book', ...b }));
+              delete data.books;
+            }
             this.snapshotBeforeImport();
             this.save(data);
             resolve(data);
@@ -108,7 +120,7 @@ const Storage = {
       const raw = localStorage.getItem('margins_pre_import_backup');
       if (!raw) return false;
       const data = JSON.parse(raw);
-      if (data.books && data.settings) {
+      if ((data.sources || data.books) && data.settings) {
         this.save(data);
         return true;
       }

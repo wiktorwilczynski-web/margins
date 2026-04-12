@@ -10,9 +10,11 @@ const DataLoader = {
 
       const data = Storage.getDefaultData();
 
-      for (const book of initial.books) {
+      const initialBooks = initial.sources || initial.books || [];
+      for (const book of initialBooks) {
         // Ensure IDs exist
         book.id = book.id || Storage.uuid();
+        book.type = book.type || 'book';
         book.coverUrl = book.coverUrl || null;
         book.currentPage = book.currentPage || 0;
         book.totalPages = book.totalPages || null;
@@ -29,7 +31,7 @@ const DataLoader = {
         }));
         book.addedAt = book.addedAt || new Date().toISOString();
 
-        data.books.push(book);
+        data.sources.push(book);
       }
 
       Storage.save(data);
@@ -44,8 +46,8 @@ const DataLoader = {
   },
 
   async fetchAllCovers(data) {
-    for (const book of data.books) {
-      if (!book.coverUrl && book.title !== 'Loose Quotes') {
+    for (const book of data.sources) {
+      if (!book.coverUrl && book.title !== 'Loose Quotes' && book.type !== 'podcast') {
         const url = await Covers.fetchCover(book.title, book.author);
         if (url) {
           book.coverUrl = url;

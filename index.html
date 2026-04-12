@@ -14,11 +14,11 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300;14..32,400;14..32,500;14..32,600;14..32,700;14..32,800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="css/styles.css?v=112">
+  <link rel="stylesheet" href="css/styles.css?v=113">
   <script>
     // Cache buster: force reload when new version is deployed
     (function() {
-      var v = 112;
+      var v = 113;
       var stored = localStorage.getItem('reread_app_version');
       if (stored && parseInt(stored) >= v) return;
       // New version — nuke all caches and reload
@@ -84,12 +84,6 @@
           </svg>
         </div>
         <span>Home</span>
-      </button>
-      <button class="tab-btn" data-tab="practice">
-        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>
-        </svg>
-        <span>Quiz</span>
       </button>
     </nav>
 
@@ -204,63 +198,106 @@
     </div>
   </div>
 
-  <!-- Add Book modal -->
+  <!-- Add Source modal -->
   <div id="add-book-modal" class="modal hidden">
     <div class="modal-overlay"></div>
     <div class="modal-content modal-large">
       <div class="modal-header">
-        <h2>Add Book</h2>
+        <h2>Add Source</h2>
         <button class="modal-close">&times;</button>
       </div>
       <div class="modal-body">
-        <div class="add-book-tabs">
-          <button class="add-tab active" data-add-tab="lessons">I have lessons ready</button>
-          <button class="add-tab" data-add-tab="quote">Quick add (just a quote)</button>
+        <div class="add-source-type-toggle">
+          <button class="add-source-type-btn active" data-source-type="book">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
+            Book
+          </button>
+          <button class="add-source-type-btn" data-source-type="podcast">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="11" r="3"/><path d="M6.2 18a9 9 0 0 1 0-14"/><path d="M17.8 18a9 9 0 0 0 0-14"/><line x1="12" y1="14" x2="12" y2="21"/></svg>
+            Podcast
+          </button>
         </div>
 
-        <div id="add-lessons-form" class="add-tab-content">
-          <div class="form-group">
-            <label for="new-book-title">Title</label>
-            <input type="text" id="new-book-title" placeholder="Book title">
+        <div id="add-book-form-section">
+          <div class="add-book-tabs">
+            <button class="add-tab active" data-add-tab="lessons">I have lessons ready</button>
+            <button class="add-tab" data-add-tab="quote">Quick add (just a quote)</button>
           </div>
-          <div class="form-group">
-            <label for="new-book-author">Author</label>
-            <input type="text" id="new-book-author" placeholder="Author name">
+          <div id="add-lessons-form" class="add-tab-content">
+            <div class="form-group">
+              <label for="new-book-title">Title</label>
+              <input type="text" id="new-book-title" placeholder="Book title">
+            </div>
+            <div class="form-group">
+              <label for="new-book-author">Author</label>
+              <input type="text" id="new-book-author" placeholder="Author name">
+            </div>
+            <div class="form-group">
+              <label for="new-book-pages">Total Pages (optional)</label>
+              <input type="number" id="new-book-pages" placeholder="e.g., 320">
+            </div>
+            <div class="instructions-box">
+              <p>1. Fill in title &amp; author above.</p>
+              <p>2. Tap "Copy prompt for Claude" below.</p>
+              <p>3. Paste it into <a href="https://claude.ai" target="_blank">claude.ai</a>.</p>
+              <p>4. Copy Claude's response and paste it below.</p>
+              <p>5. Tap Save.</p>
+            </div>
+            <button id="copy-claude-prompt" class="btn btn-secondary">Copy prompt for Claude</button>
+            <div class="form-group">
+              <label for="lessons-json">Paste lessons (JSON format)</label>
+              <textarea id="lessons-json" rows="8" placeholder='[{"title": "...", "body": "...", "page": 1, "tags": []}]'></textarea>
+            </div>
+            <div id="json-error" class="error-msg hidden"></div>
+            <button id="save-book-lessons" class="btn btn-primary">Save Book</button>
           </div>
+          <div id="add-quote-form" class="add-tab-content hidden">
+            <div class="form-group">
+              <label for="quick-quote">Quote</label>
+              <textarea id="quick-quote" rows="4" placeholder="Enter the quote..."></textarea>
+            </div>
+            <div class="form-group">
+              <label for="quick-author">Author</label>
+              <input type="text" id="quick-author" placeholder="Author name">
+            </div>
+            <div class="form-group">
+              <label for="quick-book">Book (optional)</label>
+              <input type="text" id="quick-book" placeholder="Book title">
+            </div>
+            <button id="save-quick-quote" class="btn btn-primary">Save Quote</button>
+          </div>
+        </div>
+
+        <div id="add-podcast-form-section" class="hidden">
           <div class="form-group">
-            <label for="new-book-pages">Total Pages (optional)</label>
-            <input type="number" id="new-book-pages" placeholder="e.g., 320">
+            <label>Search podcast</label>
+            <div class="podcast-search-wrap">
+              <input type="text" id="podcast-search-input" placeholder="e.g. Lex Fridman, How I Built This..." autocomplete="off" spellcheck="false">
+              <div id="podcast-search-results" class="podcast-search-dropdown hidden"></div>
+            </div>
+          </div>
+          <div id="podcast-selected-preview" class="hidden">
+            <div class="podcast-preview-card">
+              <img id="podcast-preview-art" class="podcast-preview-art" src="" alt="">
+              <div class="podcast-preview-info">
+                <div id="podcast-preview-name" class="podcast-preview-name"></div>
+                <div id="podcast-preview-host" class="podcast-preview-host"></div>
+                <div id="podcast-preview-genre" class="podcast-preview-genre"></div>
+              </div>
+            </div>
           </div>
           <div class="instructions-box">
-            <p>1. Fill in title & author above.</p>
-            <p>2. Tap "Copy prompt for Claude" below.</p>
-            <p>3. Paste it into <a href="https://claude.ai" target="_blank">claude.ai</a>.</p>
-            <p>4. Copy Claude's response and paste it below.</p>
-            <p>5. Tap Save.</p>
+            <p>1. Search and select the podcast above.</p>
+            <p>2. Tap "Copy prompt for Claude" to generate lessons.</p>
+            <p>3. Paste Claude's response below and save.</p>
           </div>
-          <button id="copy-claude-prompt" class="btn btn-secondary">Copy prompt for Claude</button>
+          <button id="copy-podcast-prompt" class="btn btn-secondary">Copy prompt for Claude</button>
           <div class="form-group">
-            <label for="lessons-json">Paste lessons (JSON format)</label>
-            <textarea id="lessons-json" rows="8" placeholder='[{"title": "...", "body": "...", "page": 1, "tags": []}]'></textarea>
+            <label for="podcast-lessons-json">Paste lessons (JSON format)</label>
+            <textarea id="podcast-lessons-json" rows="8" placeholder='[{"title": "...", "body": "...", "tags": []}]'></textarea>
           </div>
-          <div id="json-error" class="error-msg hidden"></div>
-          <button id="save-book-lessons" class="btn btn-primary">Save Book</button>
-        </div>
-
-        <div id="add-quote-form" class="add-tab-content hidden">
-          <div class="form-group">
-            <label for="quick-quote">Quote</label>
-            <textarea id="quick-quote" rows="4" placeholder="Enter the quote..."></textarea>
-          </div>
-          <div class="form-group">
-            <label for="quick-author">Author</label>
-            <input type="text" id="quick-author" placeholder="Author name">
-          </div>
-          <div class="form-group">
-            <label for="quick-book">Book</label>
-            <input type="text" id="quick-book" placeholder="Book title">
-          </div>
-          <button id="save-quick-quote" class="btn btn-primary">Save Quote</button>
+          <div id="podcast-json-error" class="error-msg hidden"></div>
+          <button id="save-podcast-lessons" class="btn btn-primary">Save Podcast</button>
         </div>
       </div>
     </div>

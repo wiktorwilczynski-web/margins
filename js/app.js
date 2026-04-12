@@ -4,8 +4,6 @@ const App = {
   currentTab: 'today',
   chatMessages: [],
   chatContext: null, // { type: 'book'|'lesson', id: string }
-  flashcardFlipped: false,
-  currentFlashcard: null,
 
   initialized: false,
 
@@ -113,7 +111,6 @@ const App = {
     switch (tab) {
       case 'today': this.renderToday(main); break;
       case 'library': this.renderLibrary(main); break;
-      case 'practice': this.renderPractice(main); break;
     }
   },
 
@@ -145,7 +142,7 @@ const App = {
 
     // Build today's lesson pool
     const dayIndex = this.dateToDayIndex(todayStr + 'H' + Math.floor(hour / 3));
-    const sortedBooks = [...data.books]
+    const sortedBooks = [...data.sources]
       .filter(b => b.lessons && b.lessons.length > 0)
       .sort((a, b) => new Date(b.addedAt || 0) - new Date(a.addedAt || 0));
     const n = Math.max(sortedBooks.length, 1);
@@ -163,7 +160,7 @@ const App = {
     for (let i = 0; i < Math.min(8, allLessons.length) && shuffled.length > 0; i++) {
       let idx = shuffled.findIndex(l => {
         if (seenIds.has(l.id)) return false;
-        const b = data.books.find(bk => bk.lessons?.some(lk => lk.id === l.id));
+        const b = data.sources.find(bk => bk.lessons?.some(lk => lk.id === l.id));
         return !b || b.id !== lastBookId;
       });
       if (idx === -1) idx = shuffled.findIndex(l => !seenIds.has(l.id));
@@ -171,18 +168,18 @@ const App = {
       const picked = shuffled.splice(idx, 1)[0];
       lessonSlice.push(picked);
       seenIds.add(picked.id);
-      const pb = data.books.find(bk => bk.lessons?.some(lk => lk.id === picked.id));
+      const pb = data.sources.find(bk => bk.lessons?.some(lk => lk.id === picked.id));
       lastBookId = pb?.id || null;
     }
 
     const hero = lessonSlice[0];
-    const heroBook = hero ? data.books.find(b => b.lessons.some(l => l.id === hero.id)) : null;
+    const heroBook = hero ? data.sources.find(b => b.lessons.some(l => l.id === hero.id)) : null;
     const rest = lessonSlice.slice(1);
     const sentences = hero ? (hero.body.match(/[^.!?]+[.!?]+/g) || [hero.body]) : [];
     const hookSentence = sentences[0]?.trim() || '';
 
     // Preload covers
-    data.books.forEach(b => { if (b.coverUrl) { const img = new Image(); img.src = b.coverUrl; } });
+    data.sources.forEach(b => { if (b.coverUrl) { const img = new Image(); img.src = b.coverUrl; } });
 
     let html = '';
 
@@ -223,7 +220,7 @@ const App = {
       html += `<div class="home-section-label">More today <span class="home-section-count">${rest.length}</span></div>`;
       html += `<div class="home-cards-scroll">`;
       for (const lesson of rest) {
-        const book = data.books.find(b => b.lessons.some(l => l.id === lesson.id));
+        const book = data.sources.find(b => b.lessons.some(l => l.id === lesson.id));
         const firstSentence = (lesson.body.match(/[^.!?]+[.!?]+/) || [lesson.body])[0]?.trim() || '';
         const truncated = firstSentence.length > 100 ? firstSentence.slice(0, 100).trim() + '...' : firstSentence;
         html += `
@@ -247,7 +244,7 @@ const App = {
       // Reverse so newest saves appear first
       const favLessons = [];
       for (const fid of [...favIds].reverse()) {
-        for (const book of data.books) {
+        for (const book of data.sources) {
           const l = book.lessons.find(x => x.id === fid);
           if (l) { favLessons.push({ lesson: l, book }); break; }
         }
@@ -321,7 +318,7 @@ const App = {
   openLessonPreview(lessonId) {
     const data = Storage.getData();
     let lesson, book;
-    for (const b of data.books) {
+    for (const b of data.sources) {
       const l = b.lessons.find(x => x.id === lessonId);
       if (l) { lesson = l; book = b; break; }
     }
@@ -390,7 +387,7 @@ const App = {
     section.classList.remove('hidden');
 
     const data = Storage.getData();
-    const book = data.books.find(b => b.id === bookId);
+    const book = data.sources.find(b => b.id === bookId);
     if (!book) return;
     const lesson = book.lessons.find(l => l.id === lessonId);
     if (!lesson) return;
@@ -409,7 +406,7 @@ const App = {
   openLessonJourney(lessonId) {
     const data = Storage.getData();
     let lesson, book;
-    for (const b of data.books) {
+    for (const b of data.sources) {
       const l = b.lessons.find(x => x.id === lessonId);
       if (l) { lesson = l; book = b; break; }
     }
@@ -749,7 +746,7 @@ const App = {
 
     // Collect all lessons missing detail
     const missing = [];
-    for (const book of data.books) {
+    for (const book of data.sources) {
       for (const lesson of book.lessons) {
         if (!lesson.detail) {
           missing.push({ book, lesson });
@@ -782,7 +779,7 @@ Use **bold** for key terms. Be concise and sharp. No padding or pleasantries.`;
 
         // Save detail to storage immediately
         Storage.updateData(d => {
-          for (const b of d.books) {
+          for (const b of d.sources) {
             const l = b.lessons.find(x => x.id === lesson.id);
             if (l) { l.detail = response; break; }
           }
@@ -803,7 +800,7 @@ Use **bold** for key terms. Be concise and sharp. No padding or pleasantries.`;
     if (!window.LESSON_DETAILS) return;
     const data = Storage.getData();
     let updated = false;
-    for (const book of data.books) {
+    for (const book of data.sources) {
       for (const lesson of book.lessons) {
         if (window.LESSON_DETAILS[lesson.title]) {
           lesson.detail = window.LESSON_DETAILS[lesson.title];
@@ -818,7 +815,7 @@ Use **bold** for key terms. Be concise and sharp. No padding or pleasantries.`;
     if (!window.LESSON_EXAMPLES) return;
     const data = Storage.getData();
     let updated = false;
-    for (const book of data.books) {
+    for (const book of data.sources) {
       for (const lesson of book.lessons) {
         // Always apply curated examples (overrides stale/missing data from Firebase)
         if (window.LESSON_EXAMPLES[lesson.title]) {
@@ -832,7 +829,7 @@ Use **bold** for key terms. Be concise and sharp. No padding or pleasantries.`;
 
   markLessonComplete(lessonId) {
     Storage.updateData(data => {
-      for (const b of data.books) {
+      for (const b of data.sources) {
         const l = b.lessons.find(x => x.id === lessonId);
         if (l) { l.completedAt = new Date().toISOString(); break; }
       }
@@ -985,21 +982,6 @@ Use **bold** for key terms. Be concise and sharp. No padding or pleasantries.`;
     this.renderToday();
   },
 
-  handleRecall(lessonId, remembered) {
-    Storage.updateData(data => {
-      for (const book of data.books) {
-        const lesson = book.lessons.find(l => l.id === lessonId);
-        if (lesson) {
-          lesson.lastSeen = new Date().toISOString();
-          lesson.recallScore = remembered
-            ? Math.min(10, (lesson.recallScore || 0) + 1)
-            : Math.max(0, (lesson.recallScore || 0) - 2);
-          break;
-        }
-      }
-    });
-  },
-
   // ===== LIBRARY TAB =====
   renderLibrary(container) {
     const main = container || document.getElementById('main-content');
@@ -1023,12 +1005,14 @@ Use **bold** for key terms. Be concise and sharp. No padding or pleasantries.`;
       const tags = Object.keys(tagMap).sort();
 
       // Separate currently-reading from completed
-      const reading = data.books.filter(b => !b.completed && b.title !== 'Loose Quotes');
+      const reading = data.sources.filter(b => b.type !== 'podcast' && !b.completed && b.title !== 'Loose Quotes');
+      const podcasts = data.sources.filter(b => b.type === 'podcast');
       const q = searchQuery.toLowerCase().trim();
 
       // Stats
-      const totalBooks = data.books.filter(b => b.title !== 'Loose Quotes').length;
-      const completedCount = data.books.filter(b => b.completed).length;
+      const totalBooks = data.sources.filter(b => b.type !== 'podcast' && b.title !== 'Loose Quotes').length;
+      const totalPodcasts = podcasts.length;
+      const completedCount = data.sources.filter(b => b.completed).length;
 
       let html = '';
 
@@ -1050,6 +1034,10 @@ Use **bold** for key terms. Be concise and sharp. No padding or pleasantries.`;
             <div class="lib-stat-label">Books</div>
           </div>
           <div class="lib-stat-card">
+            <div class="lib-stat-number">${totalPodcasts}</div>
+            <div class="lib-stat-label">Podcasts</div>
+          </div>
+          <div class="lib-stat-card">
             <div class="lib-stat-number">${reading.length}</div>
             <div class="lib-stat-label">Reading</div>
           </div>
@@ -1066,7 +1054,7 @@ Use **bold** for key terms. Be concise and sharp. No padding or pleasantries.`;
 
       // Search results
       if (q) {
-        const matchBooks = data.books.filter(b => b.title.toLowerCase().includes(q) || b.author.toLowerCase().includes(q));
+        const matchBooks = data.sources.filter(b => b.title.toLowerCase().includes(q) || b.author.toLowerCase().includes(q));
         const matchLessons = allLessons.filter(l => l.title.toLowerCase().includes(q) || l.body.toLowerCase().includes(q));
 
         if (matchBooks.length === 0 && matchLessons.length === 0) {
@@ -1082,7 +1070,7 @@ Use **bold** for key terms. Be concise and sharp. No padding or pleasantries.`;
           if (matchLessons.length > 0) {
             html += `<div class="lib-section-label">Lessons</div>`;
             for (const lesson of matchLessons.slice(0, 8)) {
-              const book = data.books.find(b => b.lessons.some(l => l.id === lesson.id));
+              const book = data.sources.find(b => b.lessons.some(l => l.id === lesson.id));
               html += `
                 <div class="lib-lesson-row" data-lesson-id="${lesson.id}">
                   <div class="lib-lesson-title">${lesson.title}</div>
@@ -1146,7 +1134,7 @@ Use **bold** for key terms. Be concise and sharp. No padding or pleasantries.`;
           // Selected tag lessons
           if (selectedTag && tagMap[selectedTag]) {
             for (const lesson of tagMap[selectedTag].slice(0, 6)) {
-              const book = data.books.find(b => b.lessons.some(l => l.id === lesson.id));
+              const book = data.sources.find(b => b.lessons.some(l => l.id === lesson.id));
               html += `
                 <div class="lib-lesson-row" data-lesson-id="${lesson.id}">
                   <div class="lib-lesson-title">${lesson.title}</div>
@@ -1157,9 +1145,33 @@ Use **bold** for key terms. Be concise and sharp. No padding or pleasantries.`;
           }
         }
 
-        // All books grid (exclude currently-reading to avoid duplicates, hide empty Loose Quotes)
+        // Podcasts horizontal scroll section
+        if (podcasts.length > 0) {
+          html += `<div class="home-section-label">Podcasts <span class="home-section-count">${podcasts.length}</span></div>`;
+          html += `<div class="lib-reading-scroll">`;
+          for (const podcast of podcasts) {
+            html += `
+              <div class="lib-reading-card" data-book-id="${podcast.id}">
+                <div class="lib-reading-cover-wrap">
+                  ${podcast.coverUrl
+                    ? `<img class="lib-reading-cover" src="${podcast.coverUrl}" alt="">`
+                    : `<div class="lib-reading-cover-ph">${podcast.title}</div>`
+                  }
+                </div>
+                <div class="lib-reading-title">${podcast.title}</div>
+                <div class="lib-reading-author">${podcast.author}</div>
+                <div class="lib-reading-pct">${podcast.lessons.length} lesson${podcast.lessons.length !== 1 ? 's' : ''}</div>
+              </div>
+            `;
+          }
+          html += `</div>`;
+        }
+
+        // All books grid (exclude currently-reading and podcasts to avoid duplicates, hide empty Loose Quotes)
         const readingIds = new Set(reading.map(b => b.id));
-        const allBooksFiltered = data.books.filter(b => {
+        const podcastIds = new Set(podcasts.map(b => b.id));
+        const allBooksFiltered = data.sources.filter(b => {
+          if (b.type === 'podcast') return false;
           if (b.title === 'Loose Quotes' && !b.quotes.length) return false;
           return true;
         });
@@ -1172,7 +1184,7 @@ Use **bold** for key terms. Be concise and sharp. No padding or pleasantries.`;
             html += this.renderLibBookCard(book);
           }
           html += `</div>`;
-        } else if (reading.length === 0) {
+        } else if (reading.length === 0 && podcasts.length === 0) {
           html += `<div class="home-section-label">All books</div>`;
           html += `<div class="lib-empty-search">Your shelf is empty. Tap + to add your first book.</div>`;
         }
@@ -1229,7 +1241,7 @@ Use **bold** for key terms. Be concise and sharp. No padding or pleasantries.`;
   // ===== CHAPTER TRACKER =====
   selectFinishedChapter(bookId, onDone) {
     const data = Storage.getData();
-    const book = data.books.find(b => b.id === bookId);
+    const book = data.sources.find(b => b.id === bookId);
     if (!book) return;
 
     const bookChs = window.BOOK_CHAPTERS?.[book.title];
@@ -1275,7 +1287,7 @@ Use **bold** for key terms. Be concise and sharp. No padding or pleasantries.`;
         const ch = bookChs.chapters.find(c => c.num === chNum);
         close();
         Storage.updateData(d => {
-          const b = d.books.find(b2 => b2.id === bookId);
+          const b = d.sources.find(b2 => b2.id === bookId);
           if (b) b.lastChapterNum = chNum;
         });
         if (ch) this.showChapterRefresherPopup([ch], book.title);
@@ -1326,16 +1338,17 @@ Use **bold** for key terms. Be concise and sharp. No padding or pleasantries.`;
     document.getElementById('chapter-popup-dismiss').addEventListener('click', () => overlay.remove());
   },
 
-  renderLibBookCard(book) {
+  renderLibBookCard(source) {
     return `
-      <div class="lib-book-card" data-book-id="${book.id}">
-        ${book.coverUrl
-          ? `<img class="lib-book-cover" src="${book.coverUrl}" alt="">`
-          : `<div class="lib-book-cover-ph"><span>${book.title}</span></div>`
+      <div class="lib-book-card" data-book-id="${source.id}">
+        ${source.coverUrl
+          ? `<img class="lib-book-cover" src="${source.coverUrl}" alt="">`
+          : `<div class="lib-book-cover-ph"><span>${source.title}</span></div>`
         }
-        <div class="lib-book-title">${book.title}</div>
-        <div class="lib-book-author">${book.author}</div>
-        <div class="lib-book-lessons">${book.lessons.length} lesson${book.lessons.length !== 1 ? 's' : ''}</div>
+        <div class="lib-book-title">${source.title}</div>
+        ${source.type === 'podcast' ? '<span class="source-type-badge source-type-podcast">Podcast</span>' : ''}
+        <div class="lib-book-author">${source.author}</div>
+        <div class="lib-book-lessons">${source.lessons.length} lesson${source.lessons.length !== 1 ? 's' : ''}</div>
       </div>
     `;
   },
@@ -1370,7 +1383,7 @@ Use **bold** for key terms. Be concise and sharp. No padding or pleasantries.`;
 
   openBookHub(bookId) {
     const data = Storage.getData();
-    const book = data.books.find(b => b.id === bookId);
+    const book = data.sources.find(b => b.id === bookId);
     if (!book) return;
 
     const modal = document.getElementById('book-hub-modal');
@@ -1381,13 +1394,13 @@ Use **bold** for key terms. Be concise and sharp. No padding or pleasantries.`;
 
     const render = () => {
       const freshData = Storage.getData();
-      const freshBook = freshData.books.find(b => b.id === bookId);
+      const freshBook = freshData.sources.find(b => b.id === bookId);
 
       let html = `
         <div class="hub-header">
           ${Covers.renderCover(freshBook, 'hub')}
           <h2>${freshBook.title}</h2>
-          <div class="hub-author">${freshBook.author}</div>
+          <div class="hub-author">${freshBook.type === 'podcast' ? 'Host: ' : ''}${freshBook.author}</div>
           ${freshBook.lessons.length > 0 ? (() => {
             const done = freshBook.lessons.filter(l => l.completedAt).length;
             const tot = freshBook.lessons.length;
@@ -1401,7 +1414,7 @@ Use **bold** for key terms. Be concise and sharp. No padding or pleasantries.`;
           })() : ''}
         </div>
 
-        ${(() => {
+        ${freshBook.type !== 'podcast' ? (() => {
           const hubChs = window.BOOK_CHAPTERS?.[freshBook.title];
           if (hubChs) {
             const hubLastChNum = freshBook.lastChapterNum ?? -1;
@@ -1419,10 +1432,10 @@ Use **bold** for key terms. Be concise and sharp. No padding or pleasantries.`;
               <input type="number" id="hub-current-page" value="${freshBook.currentPage || ''}" placeholder="0">
             </div>
           `;
-        })()}
+        })() : ''}
 
         <div class="hub-complete-toggle">
-          <label>Mark book as completed</label>
+          <label>Mark ${freshBook.type === 'podcast' ? 'podcast' : 'book'} as completed</label>
           <label class="toggle-switch">
             <input type="checkbox" id="hub-completed" ${freshBook.completed ? 'checked' : ''}>
             <span class="toggle-slider"></span>
@@ -1431,7 +1444,7 @@ Use **bold** for key terms. Be concise and sharp. No padding or pleasantries.`;
       `;
 
       // Section toggle (only show if there are lessons)
-      const hubBookChs = window.BOOK_CHAPTERS?.[freshBook.title];
+      const hubBookChs = freshBook.type !== 'podcast' ? window.BOOK_CHAPTERS?.[freshBook.title] : null;
       if (freshBook.lessons.length > 0 || freshBook.quotes.length > 0 || hubBookChs) {
         html += `
           <div class="hub-section-toggle">
@@ -1546,10 +1559,10 @@ Use **bold** for key terms. Be concise and sharp. No padding or pleasantries.`;
         }
       }
 
-      // Delete book button
+      // Delete source button
       html += `
         <div class="hub-delete-section">
-          <button class="hub-delete-btn" id="hub-delete-book">Delete this book</button>
+          <button class="hub-delete-btn" id="hub-delete-book">Delete this ${freshBook.type === 'podcast' ? 'podcast' : 'book'}</button>
         </div>
       `;
 
@@ -1563,7 +1576,7 @@ Use **bold** for key terms. Be concise and sharp. No padding or pleasantries.`;
         overlay.innerHTML = `
           <div class="confirm-dialog">
             <h3>Delete "${freshBook.title}"?</h3>
-            <p>This will remove the book and all its lessons permanently. This can't be undone.</p>
+            <p>This will remove the ${freshBook.type === 'podcast' ? 'podcast' : 'book'} and all its lessons permanently. This can't be undone.</p>
             <div class="confirm-actions">
               <button class="confirm-btn confirm-cancel" id="confirm-cancel">Cancel</button>
               <button class="confirm-btn confirm-delete" id="confirm-delete">Delete</button>
@@ -1577,14 +1590,14 @@ Use **bold** for key terms. Be concise and sharp. No padding or pleasantries.`;
 
         document.getElementById('confirm-delete').addEventListener('click', () => {
           Storage.updateData(d => {
-            d.books = d.books.filter(b => b.id !== bookId);
+            d.sources = d.sources.filter(b => b.id !== bookId);
             if (d.favorites) d.favorites = d.favorites.filter(fid => {
               return !freshBook.lessons.some(l => l.id === fid);
             });
           });
           overlay.remove();
           closeHub();
-          this.showToast('Book deleted');
+          this.showToast(`${freshBook.type === 'podcast' ? 'Podcast' : 'Book'} deleted`);
           if (this.currentTab === 'library') this.renderLibrary();
           if (this.currentTab === 'today') this.renderToday();
         });
@@ -1634,7 +1647,7 @@ Use **bold** for key terms. Be concise and sharp. No padding or pleasantries.`;
         pageInput.addEventListener('change', () => {
           const newPage = parseInt(pageInput.value) || 0;
           Storage.updateData(d => {
-            const b = d.books.find(b2 => b2.id === bookId);
+            const b = d.sources.find(b2 => b2.id === bookId);
             if (b) b.currentPage = newPage;
           });
           render();
@@ -1645,7 +1658,7 @@ Use **bold** for key terms. Be concise and sharp. No padding or pleasantries.`;
       if (completedToggle) {
         completedToggle.addEventListener('change', () => {
           Storage.updateData(d => {
-            const b = d.books.find(b2 => b2.id === bookId);
+            const b = d.sources.find(b2 => b2.id === bookId);
             if (b) b.completed = completedToggle.checked;
           });
           render();
@@ -1664,133 +1677,6 @@ Use **bold** for key terms. Be concise and sharp. No padding or pleasantries.`;
     };
     modal.querySelector('.modal-back').onclick = closeHub;
     modal.querySelector('.modal-overlay').onclick = closeHub;
-  },
-
-  // ===== PRACTICE TAB =====
-  renderPractice(container) {
-    const main = container || document.getElementById('main-content');
-    main.innerHTML = '';
-
-    const data = Storage.getData();
-    const allLessons = this.getAllUnlockedLessons(data);
-
-    // Start screen if no session
-    if (!this.quizSession && allLessons.length >= 4) {
-      const bestScore = parseInt(localStorage.getItem('quiz_best') || '0');
-      main.innerHTML = `
-        <div class="pq-start">
-          <div class="pq-start-icon">
-            <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
-          </div>
-          <h2 class="pq-start-title">Test your memory</h2>
-          <p class="pq-start-body">10 questions from your reading. Match each passage to its concept.</p>
-          <div class="pq-start-stat">${allLessons.length} lessons across ${data.books.filter(b => b.lessons.length > 0).length} books</div>
-          ${bestScore > 0 ? `<div class="pq-start-best">Your best: ${bestScore}/10</div>` : ''}
-          <button class="pq-start-btn" id="pq-begin">
-            Begin
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
-          </button>
-        </div>
-      `;
-      document.getElementById('pq-begin').addEventListener('click', () => {
-        this.quizSession = null;
-        const render = () => {
-          main.innerHTML = this.renderQuiz(data, allLessons);
-          this.bindQuizEvents(main, data, allLessons, render);
-        };
-        render();
-      });
-      return;
-    }
-
-    const render = () => {
-      main.innerHTML = this.renderQuiz(data, allLessons);
-      this.bindQuizEvents(main, data, allLessons, render);
-    };
-
-    render();
-  },
-
-  renderFlashcard(data, allLessons) {
-    if (allLessons.length === 0) {
-      return `
-        <div class="empty-state">
-          <h3>No lessons to practice</h3>
-          <p>Add lessons to your books to start practicing with flashcards.</p>
-        </div>
-      `;
-    }
-
-    if (!this.currentFlashcard) {
-      this.currentFlashcard = this.pickWeightedLesson(allLessons);
-      this.flashcardFlipped = false;
-    }
-
-    const lesson = this.currentFlashcard;
-    const book = data.books.find(b => b.lessons.some(l => l.id === lesson.id));
-
-    let html = `
-      <div class="flashcard" id="flashcard">
-        <div class="flashcard-inner ${this.flashcardFlipped ? 'flipped' : ''}">
-          <div class="flashcard-title">${lesson.title}</div>
-    `;
-
-    if (this.flashcardFlipped) {
-      html += `
-        <div class="flashcard-body">${lesson.body}</div>
-        <div class="flashcard-source">${book ? book.title : ''}</div>
-      `;
-    } else {
-      html += `<div class="flashcard-hint">Tap to reveal</div>`;
-    }
-
-    html += `</div></div>`;
-
-    if (this.flashcardFlipped) {
-      html += `
-        <div class="flashcard-actions">
-          <button class="btn btn-sm" id="flash-remembered" style="background:var(--success);color:#fff;border:none">Remembered \u2713</button>
-          <button class="btn btn-sm" id="flash-forgot" style="background:var(--danger);color:#fff;border:none">Forgot \u2717</button>
-        </div>
-      `;
-    }
-
-    return html;
-  },
-
-  bindFlashcardEvents(main, data, allLessons, render) {
-    const card = document.getElementById('flashcard');
-    if (card) {
-      card.addEventListener('click', () => {
-        if (!this.flashcardFlipped) {
-          this.flashcardFlipped = true;
-          render();
-        }
-      });
-    }
-
-    const remBtn = document.getElementById('flash-remembered');
-    const forBtn = document.getElementById('flash-forgot');
-
-    if (remBtn) {
-      remBtn.addEventListener('click', (e) => {
-        e.stopPropagation();
-        this.handleRecall(this.currentFlashcard.id, true);
-        this.currentFlashcard = null;
-        this.flashcardFlipped = false;
-        render();
-      });
-    }
-
-    if (forBtn) {
-      forBtn.addEventListener('click', (e) => {
-        e.stopPropagation();
-        this.handleRecall(this.currentFlashcard.id, false);
-        this.currentFlashcard = null;
-        this.flashcardFlipped = false;
-        render();
-      });
-    }
   },
 
   // ===== CHAT POPUP =====
@@ -1835,7 +1721,7 @@ Use **bold** for key terms. Be concise and sharp. No padding or pleasantries.`;
       selectedBookId = this.chatContext.id;
     } else if (this.chatContext?.type === 'lesson') {
       selectedLessonId = this.chatContext.id;
-      for (const b of data.books) {
+      for (const b of data.sources) {
         if (b.lessons && b.lessons.some(l => l.id === selectedLessonId)) {
           selectedBookId = b.id;
           break;
@@ -1845,13 +1731,13 @@ Use **bold** for key terms. Be concise and sharp. No padding or pleasantries.`;
 
     // Book dropdown
     let bookOptions = '<option value="">No book</option>';
-    for (const book of data.books) {
+    for (const book of data.sources) {
       if (book.title === 'Loose Quotes') continue;
       bookOptions += `<option value="${book.id}" ${selectedBookId === book.id ? 'selected' : ''}>${book.title}</option>`;
     }
 
     // Lesson dropdown (from selected book)
-    const selectedBook = data.books.find(b => b.id === selectedBookId);
+    const selectedBook = data.sources.find(b => b.id === selectedBookId);
     let lessonOptions = '<option value="">All lessons</option>';
     if (selectedBook) {
       for (const lesson of selectedBook.lessons) {
@@ -1909,7 +1795,7 @@ Use **bold** for key terms. Be concise and sharp. No padding or pleasantries.`;
     // Book change → rebuild lesson dropdown
     document.getElementById('chat-book').addEventListener('change', (e) => {
       const bookId = e.target.value;
-      const book = data.books.find(b => b.id === bookId);
+      const book = data.sources.find(b => b.id === bookId);
       const lessonSel = document.getElementById('chat-lesson');
       lessonSel.innerHTML = '<option value="">All lessons</option>';
       if (book) {
@@ -1963,10 +1849,10 @@ Use **bold** for key terms. Be concise and sharp. No padding or pleasantries.`;
 
         if (this.chatContext) {
           if (this.chatContext.type === 'book') {
-            const book = freshData.books.find(b => b.id === this.chatContext.id);
+            const book = freshData.sources.find(b => b.id === this.chatContext.id);
             if (book) systemPrompt = LLM.buildSystemPrompt(book, book.lessons, book.quotes);
           } else if (this.chatContext.type === 'lesson') {
-            for (const book of freshData.books) {
+            for (const book of freshData.sources) {
               const lesson = book.lessons.find(l => l.id === this.chatContext.id);
               if (lesson) {
                 systemPrompt = LLM.buildSystemPrompt(book, [lesson], book.quotes);
@@ -2059,12 +1945,12 @@ Use **bold** for key terms. Be concise and sharp. No padding or pleasantries.`;
     const data = Storage.getData();
     let lesson = null, book = null;
     if (type === 'lesson') {
-      for (const b of data.books) {
+      for (const b of data.sources) {
         const l = b.lessons.find(x => x.id === id);
         if (l) { lesson = l; book = b; break; }
       }
     } else if (type === 'book') {
-      book = data.books.find(b => b.id === id) || null;
+      book = data.sources.find(b => b.id === id) || null;
     }
     this.openAIChat(lesson, book, null);
   },
@@ -2403,6 +2289,109 @@ Use **bold** for key terms. Be concise and sharp. No padding or pleasantries.`;
   bindAddBook() {
     const modal = document.getElementById('add-book-modal');
 
+    // Source type toggle (Book / Podcast)
+    let currentSourceType = 'book';
+    modal.querySelectorAll('.add-source-type-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        modal.querySelectorAll('.add-source-type-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        currentSourceType = btn.dataset.sourceType;
+        document.getElementById('add-book-form-section').classList.toggle('hidden', currentSourceType !== 'book');
+        document.getElementById('add-podcast-form-section').classList.toggle('hidden', currentSourceType !== 'podcast');
+      });
+    });
+
+    // Podcast search
+    let selectedPodcast = null;
+    let podcastSearchTimer = null;
+    const podcastInput = document.getElementById('podcast-search-input');
+    const podcastResults = document.getElementById('podcast-search-results');
+
+    if (podcastInput) {
+      podcastInput.addEventListener('input', () => {
+        clearTimeout(podcastSearchTimer);
+        const q = podcastInput.value.trim();
+        if (q.length < 2) { podcastResults.classList.add('hidden'); return; }
+        podcastSearchTimer = setTimeout(async () => {
+          try {
+            const res = await fetch(`https://itunes.apple.com/search?media=podcast&term=${encodeURIComponent(q)}&limit=8`);
+            const json = await res.json();
+            const results = json.results || [];
+            if (!results.length) { podcastResults.classList.add('hidden'); return; }
+            podcastResults.innerHTML = results.map(r => `
+              <div class="podcast-result-item"
+                data-name="${(r.trackName||'').replace(/"/g,'&quot;')}"
+                data-host="${(r.artistName||'').replace(/"/g,'&quot;')}"
+                data-art="${r.artworkUrl600||''}"
+                data-genre="${r.primaryGenreName||''}">
+                <img class="podcast-result-art" src="${r.artworkUrl100||r.artworkUrl60||''}" alt="">
+                <div class="podcast-result-info">
+                  <div class="podcast-result-name">${r.trackName||''}</div>
+                  <div class="podcast-result-host">${r.artistName||''}</div>
+                </div>
+              </div>
+            `).join('');
+            podcastResults.classList.remove('hidden');
+            podcastResults.querySelectorAll('.podcast-result-item').forEach(item => {
+              item.addEventListener('click', () => {
+                selectedPodcast = { title: item.dataset.name, host: item.dataset.host, artworkUrl: item.dataset.art, genre: item.dataset.genre };
+                podcastResults.classList.add('hidden');
+                podcastInput.value = selectedPodcast.title;
+                document.getElementById('podcast-preview-art').src = selectedPodcast.artworkUrl;
+                document.getElementById('podcast-preview-name').textContent = selectedPodcast.title;
+                document.getElementById('podcast-preview-host').textContent = selectedPodcast.host;
+                document.getElementById('podcast-preview-genre').textContent = selectedPodcast.genre;
+                document.getElementById('podcast-selected-preview').classList.remove('hidden');
+              });
+            });
+          } catch(e) { podcastResults.classList.add('hidden'); }
+        }, 350);
+      });
+    }
+
+    // Copy podcast prompt
+    document.getElementById('copy-podcast-prompt')?.addEventListener('click', () => {
+      const name = selectedPodcast?.title || podcastInput?.value || '[PODCAST]';
+      const host = selectedPodcast?.host || '[HOST]';
+      const prompt = `I want to add the podcast "${name}" hosted by ${host} to my reading memory app. Generate a comprehensive set of key lessons from this podcast's most notable episodes and ideas. Return ONLY valid JSON in this exact format, with no other text:\n\n[\n  {\n    "title": "Self-contained lesson title with enough context to understand standalone (max 10 words)",\n    "body": "2-4 sentence explanation. First sentence states the core concept. Remaining sentences give supporting detail or examples.",\n    "detail": "A 2-3 paragraph deeper breakdown in markdown.",\n    "examples": "3 real-world parallels from OTHER contexts illustrating the same principle. Each a markdown bullet point with **bold case name** and 2-3 sentence explanation.",\n    "tags": ["optional", "tags"]\n  }\n]\n\nRules:\n- Generate 12-20 lessons covering this podcast\'s key ideas, frameworks, memorable arguments, and notable guests\n- Omit the "page" field (not applicable to podcasts)\n- Output ONLY the JSON array, no preamble, no markdown code fences`;
+      navigator.clipboard.writeText(prompt).then(() => this.showToast('Prompt copied to clipboard'));
+    });
+
+    // Save podcast
+    document.getElementById('save-podcast-lessons')?.addEventListener('click', () => {
+      const name = selectedPodcast?.title || podcastInput?.value?.trim();
+      const errEl = document.getElementById('podcast-json-error');
+      errEl.classList.add('hidden');
+      if (!name) { errEl.textContent = 'Select or name a podcast first'; errEl.classList.remove('hidden'); return; }
+      const jsonStr = document.getElementById('podcast-lessons-json').value.trim();
+      let lessons = [];
+      if (jsonStr) {
+        try {
+          let cleaned = jsonStr;
+          if (cleaned.startsWith('```')) cleaned = cleaned.replace(/^```\w*\n?/, '').replace(/\n?```$/, '');
+          lessons = JSON.parse(cleaned);
+          if (!Array.isArray(lessons)) throw new Error('Expected an array');
+        } catch(err) { errEl.textContent = `Invalid JSON: ${err.message}`; errEl.classList.remove('hidden'); return; }
+      }
+      const sourceId = Storage.uuid();
+      Storage.updateData(data => {
+        data.sources.push({
+          id: sourceId, type: 'podcast',
+          title: name, author: selectedPodcast?.host || '',
+          coverUrl: selectedPodcast?.artworkUrl || null,
+          currentPage: 0, totalPages: null, completed: false,
+          lessons: lessons.map(l => ({ id: Storage.uuid(), title: l.title||'', body: l.body||'', detail: l.detail||null, examples: l.examples||null, page: l.page||null, tags: l.tags||[], recallScore: 0, lastSeen: null })),
+          quotes: [], addedAt: new Date().toISOString()
+        });
+      });
+      podcastInput.value = ''; selectedPodcast = null;
+      document.getElementById('podcast-selected-preview').classList.add('hidden');
+      document.getElementById('podcast-lessons-json').value = '';
+      closeAddBook();
+      this.showToast('Podcast added');
+      if (this.currentTab === 'library') this.renderLibrary();
+    });
+
     // Tab switching
     modal.querySelectorAll('.add-tab').forEach(tab => {
       tab.addEventListener('click', () => {
@@ -2488,8 +2477,9 @@ Rules:
 
       const bookId = Storage.uuid();
       Storage.updateData(data => {
-        data.books.push({
+        data.sources.push({
           id: bookId,
+          type: 'book',
           title,
           author: author || 'Unknown',
           coverUrl: null,
@@ -2516,7 +2506,7 @@ Rules:
       Covers.fetchCover(title, author).then(url => {
         if (url) {
           Storage.updateData(d => {
-            const b = d.books.find(b2 => b2.id === bookId);
+            const b = d.sources.find(b2 => b2.id === bookId);
             if (b) b.coverUrl = url;
           });
         }
@@ -2544,10 +2534,11 @@ Rules:
       }
 
       Storage.updateData(data => {
-        let book = data.books.find(b => b.title.toLowerCase() === bookTitle.toLowerCase());
+        let book = data.sources.find(b => b.title.toLowerCase() === bookTitle.toLowerCase());
         if (!book) {
           book = {
             id: Storage.uuid(),
+            type: 'book',
             title: bookTitle || 'Loose Quotes',
             author: author || 'Unknown',
             coverUrl: null,
@@ -2558,7 +2549,7 @@ Rules:
             quotes: [],
             addedAt: new Date().toISOString()
           };
-          data.books.push(book);
+          data.sources.push(book);
         }
         book.quotes.push({
           id: Storage.uuid(),
@@ -2656,7 +2647,7 @@ Rules:
       const q = existingSearch.value.toLowerCase().trim();
       if (!q) { existingResults.classList.add('hidden'); existingResults.innerHTML = ''; return; }
       const data = Storage.getData();
-      const matches = data.books.filter(b =>
+      const matches = data.sources.filter(b =>
         b.title.toLowerCase().includes(q) || (b.author && b.author.toLowerCase().includes(q))
       ).slice(0, 6);
       if (!matches.length) { existingResults.classList.add('hidden'); return; }
@@ -2672,7 +2663,7 @@ Rules:
       existingResults.classList.remove('hidden');
       existingResults.querySelectorAll('.aq-result-item').forEach(item => {
         item.addEventListener('click', () => {
-          const book = data.books.find(b => b.id === item.dataset.bookId);
+          const book = data.sources.find(b => b.id === item.dataset.bookId);
           if (!book) return;
           selectedBook = { title: book.title, author: book.author || '', coverUrl: book.coverUrl || null, isNew: false };
           existingSearch.value = '';
@@ -2780,7 +2771,7 @@ Rules:
     }
     const favLessons = [];
     for (const fid of [...favIds].reverse()) {
-      for (const book of data.books) {
+      for (const book of data.sources) {
         const l = book.lessons.find(x => x.id === fid);
         if (l) { favLessons.push({ lesson: l, book }); break; }
       }
@@ -2821,9 +2812,9 @@ Rules:
   // ===== HELPERS =====
   getAllUnlockedLessons(data) {
     const lessons = [];
-    for (const book of data.books) {
-      for (const lesson of book.lessons) {
-        if (book.completed || !lesson.page || !book.currentPage || lesson.page <= book.currentPage) {
+    for (const source of data.sources) {
+      for (const lesson of source.lessons) {
+        if (source.type === 'podcast' || source.completed || !lesson.page || !source.currentPage || lesson.page <= source.currentPage) {
           lessons.push(lesson);
         }
       }
@@ -2833,7 +2824,7 @@ Rules:
 
   getAllQuotes(data) {
     const quotes = [];
-    for (const book of data.books) {
+    for (const book of data.sources) {
       for (const quote of book.quotes) {
         quotes.push(quote);
       }
@@ -2849,220 +2840,6 @@ Rules:
       hash |= 0;
     }
     return Math.abs(hash);
-  },
-
-  // ===== CONCEPT QUIZ =====
-  buildQuizQuestions(data, allLessons, count = 10) {
-    if (allLessons.length < 4) return null;
-
-    // Shuffle and pick questions
-    const shuffled = [...allLessons].sort(() => Math.random() - 0.5);
-    const selected = shuffled.slice(0, Math.min(count, shuffled.length));
-
-    return selected.map(lesson => {
-      const correctBook = data.books.find(b => b.lessons.some(l => l.id === lesson.id));
-
-      // Pick 3 wrong lesson titles from the full pool (different lessons)
-      const others = allLessons
-        .filter(l => l.id !== lesson.id)
-        .sort(() => Math.random() - 0.5)
-        .slice(0, 3);
-
-      // Options: 4 lesson objects shuffled, marked with correct id
-      const options = [...others, lesson].sort(() => Math.random() - 0.5);
-      return { lesson, correctBook, options, chosen: null };
-    });
-  },
-
-  renderQuiz(data, allLessons) {
-    if (allLessons.length < 4) {
-      return `
-        <div class="empty-state">
-          <h3>Almost ready to play</h3>
-          <p>You need at least 4 lessons across your books before the quiz can challenge you. Keep reading.</p>
-        </div>
-      `;
-    }
-
-    if (!this.quizSession) {
-      const questions = this.buildQuizQuestions(data, allLessons);
-      if (!questions) return `<div class="empty-state"><h3>Not quite enough to work with</h3><p>Add a few more lessons and we'll build a quiz from your reading.</p></div>`;
-      this.quizSession = { questions, current: 0, score: 0, finished: false };
-    }
-
-    const session = this.quizSession;
-    if (session.finished) return this.renderQuizResults(session);
-
-    const q = session.questions[session.current];
-    const total = session.questions.length;
-    const isCorrect = q.chosen && q.chosen === q.lesson.id;
-    const labels = ['A', 'B', 'C', 'D'];
-
-    return `
-      <div class="pq-question">
-        <div class="pq-counter">${session.current + 1} <span class="pq-counter-of">of ${total}</span></div>
-
-        <div class="pq-progress-track">
-          ${Array.from({length: total}, (_, i) => `<div class="pq-progress-dot ${i < session.current ? 'done' : ''} ${i === session.current ? 'current' : ''}"></div>`).join('')}
-        </div>
-
-        <div class="pq-prompt">
-          <div class="pq-prompt-label">Name the concept</div>
-          <div class="pq-prompt-body">${this.quizFormatBody(q.lesson.body)}</div>
-        </div>
-
-        <div class="pq-options">
-          ${q.options.map((opt, i) => {
-            let state = '';
-            let icon = labels[i];
-            if (q.chosen) {
-              if (opt.id === q.lesson.id) { state = 'correct'; icon = '✓'; }
-              else if (opt.id === q.chosen) { state = 'wrong'; icon = '✗'; }
-              else state = 'dim';
-            }
-            return `
-              <button class="pq-option ${state}" data-lesson-id="${opt.id}" ${q.chosen ? 'disabled' : ''}>
-                <span class="pq-opt-letter">${icon}</span>
-                <span class="pq-opt-text">${opt.title}</span>
-              </button>
-            `;
-          }).join('')}
-        </div>
-
-        ${q.chosen ? `
-          <div class="pq-feedback ${isCorrect ? 'pq-feedback-correct' : 'pq-feedback-wrong'}">
-            ${isCorrect
-              ? `<span class="pq-feedback-icon">✓</span> Correct — <em>${q.correctBook?.title || ''}</em>`
-              : `<span class="pq-feedback-icon">✗</span> <strong>${q.lesson.title}</strong> — <em>${q.correctBook?.title || ''}</em>`}
-          </div>
-          <button class="pq-next-btn" id="quiz-next">
-            ${session.current + 1 < total ? 'Next' : 'See results'}
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
-          </button>
-        ` : ''}
-
-        <div class="pq-score-float">${session.score}/${session.current + (q.chosen ? 1 : 0)}</div>
-      </div>
-    `;
-  },
-
-  renderQuizResults(session) {
-    const total = session.questions.length;
-    const score = session.score;
-    const pct = Math.round((score / total) * 100);
-
-    const storedBest = parseInt(localStorage.getItem('quiz_best') || '0');
-    const isNewBest = score > storedBest;
-    if (isNewBest) localStorage.setItem('quiz_best', String(score));
-    const best = isNewBest ? score : storedBest;
-
-    let message;
-    if (pct === 100)    message = 'Flawless';
-    else if (pct >= 80) message = 'Sharp mind';
-    else if (pct >= 60) message = 'Getting there';
-    else if (pct >= 40) message = 'Room to grow';
-    else                message = 'Keep reading';
-
-    const reviewHtml = session.questions.map(q => {
-      const correct = q.chosen === q.lesson.id;
-      return `
-        <div class="pq-review-row ${correct ? 'pq-review-correct' : 'pq-review-wrong'}">
-          <span class="pq-review-icon">${correct ? '✓' : '✗'}</span>
-          <div class="pq-review-text">
-            <span class="pq-review-title">${q.lesson.title}</span>
-            <span class="pq-review-book">${q.correctBook?.title || ''}</span>
-          </div>
-        </div>
-      `;
-    }).join('');
-
-    return `
-      <div class="pq-results">
-        <div class="pq-results-score-ring">
-          <svg viewBox="0 0 120 120" class="pq-ring-svg">
-            <circle cx="60" cy="60" r="52" fill="none" stroke="var(--border)" stroke-width="6"/>
-            <circle cx="60" cy="60" r="52" fill="none" stroke="var(--accent)" stroke-width="6"
-              stroke-dasharray="${Math.round(2 * Math.PI * 52)}"
-              stroke-dashoffset="${Math.round(2 * Math.PI * 52 * (1 - pct / 100))}"
-              stroke-linecap="round"
-              class="pq-ring-fill"/>
-          </svg>
-          <div class="pq-ring-inner">
-            <div class="pq-ring-score">${score}</div>
-            <div class="pq-ring-total">/ ${total}</div>
-          </div>
-        </div>
-
-        <div class="pq-results-message">${message}</div>
-        ${isNewBest ? `<div class="pq-results-best">New personal best</div>` : `<div class="pq-results-best-old">Best: ${best}/${total}</div>`}
-
-        <div class="pq-results-review-label">Review</div>
-        ${reviewHtml}
-
-        <button class="pq-restart-btn" id="quiz-restart">
-          Play again
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 4v6h6"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg>
-        </button>
-      </div>
-    `;
-  },
-
-  quizFormatBody(body) {
-    if (!body) return '';
-    const clean = body.replace(/<[^>]+>/g, '').replace(/\s+/g, ' ').trim();
-    if (clean.length <= 300) return clean;
-    const cut = clean.lastIndexOf(' ', 300);
-    return clean.slice(0, cut > 0 ? cut : 300) + '…';
-  },
-
-  bindQuizEvents(main, data, allLessons, render) {
-    // Option tap
-    main.querySelectorAll('.pq-option:not([disabled])').forEach(btn => {
-      btn.addEventListener('click', () => {
-        const session = this.quizSession;
-        if (!session) return;
-        const q = session.questions[session.current];
-        if (q.chosen) return;
-        q.chosen = btn.dataset.lessonId;
-        if (q.chosen === q.lesson.id) session.score++;
-        render();
-      });
-    });
-
-    // Next / finish
-    const nextBtn = document.getElementById('quiz-next');
-    if (nextBtn) {
-      nextBtn.addEventListener('click', () => {
-        const session = this.quizSession;
-        session.current++;
-        if (session.current >= session.questions.length) session.finished = true;
-        render();
-      });
-    }
-
-    // Restart
-    const restartBtn = document.getElementById('quiz-restart');
-    if (restartBtn) {
-      restartBtn.addEventListener('click', () => {
-        this.quizSession = null;
-        render();
-      });
-    }
-  },
-
-  pickWeightedLesson(lessons) {
-    // Lessons with lower recallScore should appear more often
-    const weighted = lessons.map(l => ({
-      lesson: l,
-      weight: Math.max(1, 11 - (l.recallScore || 0))
-    }));
-    const totalWeight = weighted.reduce((sum, w) => sum + w.weight, 0);
-    let random = Math.random() * totalWeight;
-    for (const w of weighted) {
-      random -= w.weight;
-      if (random <= 0) return w.lesson;
-    }
-    return lessons[0];
   },
 
   // ===== TOAST =====
