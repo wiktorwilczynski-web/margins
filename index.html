@@ -18,7 +18,7 @@
   <script>
     // Cache buster: force reload when new version is deployed
     (function() {
-      var v = 88;
+      var v = 89;
       var stored = localStorage.getItem('margins_app_version');
       if (stored && parseInt(stored) >= v) return;
       // New version — nuke all caches and reload
@@ -282,6 +282,25 @@
       </div>
       <div class="aq-selected hidden"></div>
       <button id="aq-submit" class="btn btn-primary aq-submit-btn">Add to queue</button>
+    </div>
+  </div>
+
+  <!-- Lesson Preview modal (centered popup) -->
+  <div id="lesson-preview-modal" class="lp-overlay hidden">
+    <div class="lp-card">
+      <div class="lp-title" id="lp-title"></div>
+      <div class="lp-body" id="lp-body"></div>
+      <div class="lp-actions">
+        <button class="home-hero-cta hub-journey-btn" id="lp-journey">
+          Begin journey
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+        </button>
+        <button class="home-action-pill" id="lp-fav">♡ Save</button>
+        <button class="home-action-pill" id="lp-chat">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+          Ask AI
+        </button>
+      </div>
     </div>
   </div>
 

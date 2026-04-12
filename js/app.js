@@ -79,6 +79,12 @@ const App = {
       addQuotePage.classList.remove('open');
       return;
     }
+    // Lesson preview popup
+    const lpModal = document.getElementById('lesson-preview-modal');
+    if (lpModal && !lpModal.classList.contains('hidden')) {
+      lpModal.classList.add('hidden');
+      return;
+    }
     // Journey modal
     const journeyModal = document.getElementById('journey-modal');
     if (journeyModal && !journeyModal.classList.contains('hidden')) {
@@ -249,9 +255,11 @@ const App = {
         html += `<div class="home-section-label">Saved</div>`;
         html += `<div class="home-saved-list">`;
         for (const { lesson, book } of favLessons.slice(0, 4)) {
+          const excerpt = (lesson.body.match(/[^.!?]+[.!?]+/) || [lesson.body])[0]?.trim() || '';
           html += `
             <div class="home-saved-item" data-lesson-id="${lesson.id}">
               <div class="home-saved-title">${lesson.title}</div>
+              <div class="home-saved-excerpt">${excerpt}</div>
               <div class="home-saved-source">${book.title}</div>
             </div>
           `;
@@ -292,35 +300,60 @@ const App = {
       heroChat.addEventListener('click', () => this.openChatWithContext('lesson', heroChat.dataset.lessonId));
     }
 
-    // Mini cards → journey
+    // Mini cards → preview popup
     main.querySelectorAll('.home-mini-card').forEach(card => {
-      card.addEventListener('click', () => this.openLessonJourney(card.dataset.lessonId));
+      card.addEventListener('click', () => this.openLessonPreview(card.dataset.lessonId));
     });
 
-    // Saved items → journey
+    // Saved items → preview popup
     main.querySelectorAll('.home-saved-item').forEach(item => {
-      item.addEventListener('click', () => this.openLessonJourney(item.dataset.lessonId));
+      item.addEventListener('click', () => this.openLessonPreview(item.dataset.lessonId));
     });
 
   },
 
   formatLessonBody(body) {
-    // Split into sentences
     const sentences = body.match(/[^.!?]+[.!?]+/g) || [body];
-    if (sentences.length <= 1) return body;
+    return sentences.map(s => `<div class="lesson-sentence">${s.trim()}</div>`).join('');
+  },
 
-    // Pair: concept (normal text) → example (indented, muted)
-    let html = '';
-    for (let i = 0; i < sentences.length; i++) {
-      const s = sentences[i].trim();
-      if (!s) continue;
-      if (i % 2 === 0) {
-        html += `<div class="lesson-concept">${s}</div>`;
-      } else {
-        html += `<div class="lesson-example">${s}</div>`;
-      }
+  openLessonPreview(lessonId) {
+    const data = Storage.getData();
+    let lesson;
+    for (const b of data.books) {
+      const l = b.lessons.find(x => x.id === lessonId);
+      if (l) { lesson = l; break; }
     }
-    return html;
+    if (!lesson) return;
+
+    const modal = document.getElementById('lesson-preview-modal');
+    document.getElementById('lp-title').textContent = lesson.title;
+    document.getElementById('lp-body').innerHTML = this.formatLessonBody(lesson.body);
+
+    const isFav = this.isFavorite(lessonId);
+    const favBtn = document.getElementById('lp-fav');
+    favBtn.textContent = isFav ? '♥ Saved' : '♡ Save';
+    favBtn.classList.toggle('is-fav', isFav);
+
+    // Buttons
+    document.getElementById('lp-journey').onclick = () => {
+      modal.classList.add('hidden');
+      this.openLessonJourney(lessonId);
+    };
+    favBtn.onclick = () => {
+      this.toggleFavorite(lessonId);
+      const nowFav = this.isFavorite(lessonId);
+      favBtn.textContent = nowFav ? '♥ Saved' : '♡ Save';
+      favBtn.classList.toggle('is-fav', nowFav);
+    };
+    document.getElementById('lp-chat').onclick = () => {
+      modal.classList.add('hidden');
+      this.openLessonJourney(lessonId);
+    };
+
+    modal.classList.remove('hidden');
+    // Tap backdrop to close
+    modal.onclick = (e) => { if (e.target === modal) modal.classList.add('hidden'); };
   },
 
   handleLearnMore(lessonId, bookId) {
@@ -372,11 +405,6 @@ const App = {
     const sentences = lesson.body.match(/[^.!?]+[.!?]+/g) || [lesson.body];
     const hookSentence = sentences[0]?.trim() || lesson.body;
 
-    // Pick a highlight sentence (NOT the first one, to avoid duplication)
-    const highlight = sentences.length > 2
-      ? sentences.slice(1).map(s => s.trim()).filter(s => s.length > 20 && s.length < 140).sort((a, b) => b.length - a.length)[0]
-      : null;
-
     // Build scene data — each scene is visually distinct
     const scenes = [];
 
@@ -394,13 +422,12 @@ const App = {
       `
     });
 
-    // Scene 2: THE IDEA — full body, left-aligned, with optional highlight card
+    // Scene 2: THE IDEA — full body, left-aligned
     scenes.push({
       type: 'concept',
       html: `
         <div class="j-idea">
           <div class="j-idea-label">The idea</div>
-          ${highlight ? `<div class="j-idea-highlight">${highlight}</div>` : ''}
           <div class="j-idea-body">${this.formatLessonBody(lesson.body)}</div>
         </div>
       `
@@ -1081,24 +1108,11 @@ Use **bold** for key terms. Be concise and sharp. No padding or pleasantries.`;
                 </div>
               `;
             }
-            const isFav = this.isFavorite(lesson.id);
+            const excerpt = (lesson.body.match(/[^.!?]+[.!?]+/) || [lesson.body])[0]?.trim() || '';
             return `
               <div class="hub-lesson-card" data-lesson-id="${lesson.id}">
                 <div class="hub-lesson-title">${lesson.title}</div>
-                <div class="hub-lesson-body">${this.formatLessonBody(lesson.body)}</div>
-                <div class="hub-lesson-actions">
-                  <button class="home-hero-cta hub-journey-btn" data-lesson-id="${lesson.id}">
-                    Begin journey
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
-                  </button>
-                  <button class="home-action-pill hub-fav-btn ${isFav ? 'is-fav' : ''}" data-lesson-id="${lesson.id}">
-                    ${isFav ? '♥ Saved' : '♡ Save'}
-                  </button>
-                  <button class="home-action-pill hub-chat-btn" data-lesson-id="${lesson.id}">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
-                    Ask AI
-                  </button>
-                </div>
+                <div class="hub-lesson-excerpt">${excerpt}</div>
               </div>
             `;
           };
@@ -1191,26 +1205,9 @@ Use **bold** for key terms. Be concise and sharp. No padding or pleasantries.`;
         });
       });
 
-      // Bind hub lesson buttons
-      content.querySelectorAll('.hub-journey-btn').forEach(btn => {
-        btn.addEventListener('click', () => {
-          closeHub();
-          setTimeout(() => this.openLessonJourney(btn.dataset.lessonId), 150);
-        });
-      });
-      content.querySelectorAll('.hub-fav-btn').forEach(btn => {
-        btn.addEventListener('click', () => {
-          this.toggleFavorite(btn.dataset.lessonId);
-          const isFav = this.isFavorite(btn.dataset.lessonId);
-          btn.textContent = isFav ? '♥ Saved' : '♡ Save';
-          btn.classList.toggle('is-fav', isFav);
-        });
-      });
-      content.querySelectorAll('.hub-chat-btn').forEach(btn => {
-        btn.addEventListener('click', () => {
-          closeHub();
-          setTimeout(() => this.openLessonJourney(btn.dataset.lessonId), 150);
-        });
+      // Bind hub lesson cards → preview popup
+      content.querySelectorAll('.hub-lesson-card[data-lesson-id]').forEach(card => {
+        card.addEventListener('click', () => this.openLessonPreview(card.dataset.lessonId));
       });
 
       // Bind quote toggles

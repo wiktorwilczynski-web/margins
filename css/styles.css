@@ -1023,9 +1023,69 @@ label {
   line-height: 1.3;
 }
 
+.home-saved-excerpt {
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--text-secondary);
+  margin-top: 2px;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
 .home-saved-source {
   font-size: 11px;
   color: var(--text-muted);
+  margin-top: 2px;
+}
+
+/* --- Lesson Preview Modal --- */
+.lp-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.55);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 300;
+  padding: var(--space-5);
+  backdrop-filter: blur(2px);
+}
+.lp-overlay.hidden { display: none; }
+
+.lp-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 20px 18px;
+  width: 100%;
+  max-height: 75vh;
+  overflow-y: auto;
+  box-shadow: var(--shadow-lg);
+}
+
+.lp-title {
+  font-family: var(--font-body);
+  font-size: 17px;
+  font-weight: 700;
+  color: var(--text);
+  line-height: 1.35;
+  margin-bottom: var(--space-3);
+}
+
+.lp-body {
+  font-size: 14px;
+  line-height: 1.65;
+  color: var(--text-secondary);
+  margin-bottom: var(--space-4);
+}
+
+.lp-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-wrap: wrap;
 }
 
 /* Legacy dashboard styles kept for hub/topic cards */
@@ -1088,8 +1148,8 @@ label {
   margin-bottom: var(--space-3);
 }
 
-.dash-lesson-body .lesson-concept {
-  color: var(--text);
+.dash-lesson-body .lesson-sentence {
+  color: var(--text-secondary);
   font-size: 14px;
   line-height: 1.6;
   margin-bottom: var(--space-2);
@@ -3000,27 +3060,32 @@ label {
   background: var(--bg-card);
   border: 1px solid var(--border);
   border-radius: var(--radius);
-  padding: 16px 18px;
-  margin-bottom: var(--space-3);
+  padding: 14px 16px;
+  margin-bottom: var(--space-2);
   display: flex;
   flex-direction: column;
+  gap: 4px;
   box-shadow: var(--shadow-sm);
+  cursor: pointer;
+  transition: background var(--duration-fast), transform var(--duration-fast);
 }
+.hub-lesson-card:active { background: var(--bg-card-alt); transform: scale(0.98); }
 
 .hub-lesson-title {
-  font-family: var(--font-display);
-  font-size: 16px;
-  font-weight: 700;
+  font-size: 15px;
+  font-weight: 600;
   color: var(--text);
-  margin-bottom: var(--space-3);
   line-height: 1.3;
 }
 
-.hub-lesson-body {
-  font-size: 14px;
-  line-height: 1.65;
+.hub-lesson-excerpt {
+  font-size: 13px;
+  line-height: 1.5;
   color: var(--text-secondary);
-  margin-bottom: var(--space-4);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 }
 
 .hub-lesson-actions {
@@ -3708,20 +3773,11 @@ label {
   animation: contentReveal 0.5s var(--ease-out) 0.2s both;
 }
 
-.j-idea-body .lesson-concept {
+.j-idea-body .lesson-sentence {
   font-size: 15px;
   line-height: 1.7;
   color: var(--j-text);
   margin-bottom: var(--space-3);
-}
-
-.j-idea-body .lesson-example {
-  font-size: 14px;
-  color: var(--j-text-muted);
-  line-height: 1.6;
-  padding-left: var(--space-4);
-  border-left: 2px solid var(--j-border);
-  margin-bottom: var(--space-5);
 }
 
 /* ---- Scene 3: Going Deeper ---- */
